@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dayflow - Sign Up</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body class="auth-body">
+
+    <div class="auth-container">
+
+        <div class="auth-left">
+            <div class="brand">
+                <h1>Dayflow</h1>
+                <p>Every workday, perfectly aligned.</p>
+            </div>
+
+            <div class="auth-info">
+                <h2>Join Dayflow</h2>
+                <p>
+                    Create your employee or HR account and manage your
+                    workday with ease.
+                </p>
+            </div>
+        </div>
+
+        <div class="auth-card">
+
+            <h2>Create Account</h2>
+            <p class="subtitle">Register your Dayflow account</p>
+
+            <form id="signupForm">
+
+                <div class="form-group">
+                    <label for="signupName">Full Name</label>
+                    <input
+                        type="text"
+                        id="signupName"
+                        placeholder="e.g. Rahul Kumar"
+                        autocomplete="name"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="employeeId">Employee ID / Code</label>
+                    <input
+                        type="text"
+                        id="employeeId"
+                        placeholder="e.g. DF0003"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="signupEmail">Work Email</label>
+                    <input
+                        type="email"
+                        id="signupEmail"
+                        placeholder="employee@dayflow.com"
+                        autocomplete="email"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="signupPassword">Password (min 8 chars)</label>
+                    <input
+                        type="password"
+                        id="signupPassword"
+                        placeholder="Create a strong password"
+                        autocomplete="new-password"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="role">Role</label>
+                    <select id="role" required>
+                        <option value="">Select Role</option>
+                        <option value="employee">Employee</option>
+                        <option value="hr">HR / Admin</option>
+                    </select>
+                </div>
+
+                <p id="signupError" class="error-message"></p>
+
+                <button type="submit" class="primary-btn">
+                    Create Account
+                </button>
+
+            </form>
+
+            <p class="auth-link">
+                Already have an account?
+                <a href="index.html">Sign In</a>
+            </p>
+
+        </div>
+
+    </div>
+
+   <script src="../js/script.js"></script>
+</body>
+</html>
