@@ -27,6 +27,7 @@ Core Odoo HRMS module managing:
         'security/security.xml',
         'security/ir.model.access.csv',
         'data/ir_sequence_data.xml',
+        'views/menu_views.xml',
     ],
     'demo': [],
     'installable': True,

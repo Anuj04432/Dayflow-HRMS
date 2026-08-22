@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- ========================================================= -->
+        <!-- EMPLOYEE VIEWS & ACTIONS                                  -->
+        <!-- ========================================================= -->
+        <record id="view_dayflow_employee_tree" model="ir.ui.view">
+            <field name="name">dayflow.employee.tree</field>
+            <field name="model">dayflow.employee</field>
+            <field name="arch" type="xml">
+                <tree string="Dayflow Employees">
+                    <field name="employee_code"/>
+                    <field name="name"/>
+                    <field name="work_email"/>
+                    <field name="phone"/>
+                    <field name="job_title"/>
+                    <field name="department_name"/>
+                    <field name="status" widget="badge" decoration-success="status == 'active'" decoration-warning="status == 'on_leave'" decoration-muted="status == 'inactive'"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_dayflow_employee_form" model="ir.ui.view">
+            <field name="name">dayflow.employee.form</field>
+            <field name="model">dayflow.employee</field>
+            <field name="arch" type="xml">
+                <form string="Employee Profile">
+                    <sheet>
+                        <field name="image_1920" widget="image" class="oe_avatar"/>
+                        <div class="oe_title">
+                            <label for="name" class="oe_edit_only"/>
+                            <h1><field name="name" placeholder="Full Name"/></h1>
+                            <h3><field name="employee_code" readonly="1"/></h3>
+                        </div>
+                        <group>
+                            <group string="Employment Details">
+                                <field name="user_id"/>
+                                <field name="job_title"/>
+                                <field name="department_name"/>
+                                <field name="join_date"/>
+                                <field name="status"/>
+                            </group>
+                            <group string="Contact Info">
+                                <field name="work_email"/>
+                                <field name="phone"/>
+                                <field name="address"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Attendance Logs">
+                                <field name="attendance_ids" readonly="1">
+                                    <tree>
+                                        <field name="date"/>
+                                        <field name="check_in"/>
+                                        <field name="check_out"/>
+                                        <field name="worked_hours"/>
+                                        <field name="state"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            <page string="Leave History">
+                                <field name="leave_ids" readonly="1">
+                                    <tree>
+                                        <field name="leave_type"/>
+                                        <field name="date_from"/>
+                                        <field name="date_to"/>
+                                        <field name="duration_days"/>
+                                        <field name="state"/>
+                                    </tree>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids"/>
+                        <field name="activity_ids"/>
+                        <field name="message_ids"/>
+                    </div>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_dayflow_employee" model="ir.actions.act_window">
+            <field name="name">Employees</field>
+            <field name="res_model">dayflow.employee</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">Create your first Dayflow employee!</p>
+            </field>
+        </record>
+
+        <!-- ========================================================= -->
+        <!-- ATTENDANCE VIEWS & ACTIONS                                -->
+        <!-- ========================================================= -->
+        <record id="view_dayflow_attendance_tree" model="ir.ui.view">
+            <field name="name">dayflow.attendance.tree</field>
+            <field name="model">dayflow.attendance</field>
+            <field name="arch" type="xml">
+                <tree string="Attendance Logs" default_order="date desc, check_in desc">
+                    <field name="employee_id"/>
+                    <field name="date"/>
+                    <field name="check_in"/>
+                    <field name="check_out"/>
+                    <field name="worked_hours"/>
+                    <field name="state" widget="badge" decoration-success="state == 'present'" decoration-warning="state == 'half_day'" decoration-info="state == 'leave'" decoration-danger="state == 'absent'"/>
+                    <field name="remarks"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="action_dayflow_attendance" model="ir.actions.act_window">
+            <field name="name">Attendance</field>
+            <field name="res_model">dayflow.attendance</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+        <!-- ========================================================= -->
+        <!-- LEAVE VIEWS & ACTIONS                                     -->
+        <!-- ========================================================= -->
+        <record id="view_dayflow_leave_tree" model="ir.ui.view">
+            <field name="name">dayflow.leave.tree</field>
+            <field name="model">dayflow.leave</field>
+            <field name="arch" type="xml">
+                <tree string="Leave Requests" default_order="create_date desc">
+                    <field name="employee_id"/>
+                    <field name="leave_type"/>
+                    <field name="date_from"/>
+                    <field name="date_to"/>
+                    <field name="duration_days"/>
+                    <field name="state" widget="badge" decoration-info="state == 'pending'" decoration-success="state == 'approved'" decoration-danger="state == 'rejected'"/>
+                    <field name="remarks"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_dayflow_leave_form" model="ir.ui.view">
+            <field name="name">dayflow.leave.form</field>
+            <field name="model">dayflow.leave</field>
+            <field name="arch" type="xml">
+                <form string="Leave Request">
+                    <header>
+                        <button name="action_approve" string="Approve" type="object" class="btn-primary" invisible="state != 'pending'" groups="dayflow.group_dayflow_hr"/>
+                        <button name="action_reject" string="Reject" type="object" class="btn-secondary" invisible="state != 'pending'" groups="dayflow.group_dayflow_hr"/>
+                        <field name="state" widget="statusbar" statusbar_visible="pending,approved,rejected"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <group string="Leave Details">
+                                <field name="employee_id"/>
+                                <field name="leave_type"/>
+                                <field name="date_from"/>
+                                <field name="date_to"/>
+                                <field name="duration_days"/>
+                            </group>
+                            <group string="Approval Info">
+                                <field name="approved_by"/>
+                                <field name="remarks"/>
+                                <field name="manager_remarks"/>
+                            </group>
+                        </group>
+                    </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids"/>
+                        <field name="activity_ids"/>
+                        <field name="message_ids"/>
+                    </div>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_dayflow_leave" model="ir.actions.act_window">
+            <field name="name">Leave Requests</field>
+            <field name="res_model">dayflow.leave</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+        <!-- ========================================================= -->
+        <!-- PAYROLL VIEWS & ACTIONS                                   -->
+        <!-- ========================================================= -->
+        <record id="view_dayflow_payroll_tree" model="ir.ui.view">
+            <field name="name">dayflow.payroll.tree</field>
+            <field name="model">dayflow.payroll</field>
+            <field name="arch" type="xml">
+                <tree string="Payroll Structures">
+                    <field name="employee_id"/>
+                    <field name="basic_salary"/>
+                    <field name="hra"/>
+                    <field name="special_allowance"/>
+                    <field name="deductions"/>
+                    <field name="gross_salary"/>
+                    <field name="net_salary" font_weight="bold"/>
+                    <field name="payment_frequency"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="action_dayflow_payroll" model="ir.actions.act_window">
+            <field name="name">Payroll</field>
+            <field name="res_model">dayflow.payroll</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+        <!-- ========================================================= -->
+        <!-- MENU STRUCTURE                                            -->
+        <!-- ========================================================= -->
+        <menuitem id="menu_dayflow_root" name="Dayflow HRMS" sequence="10" web_icon="dayflow,static/description/icon.png"/>
+
+        <menuitem id="menu_dayflow_employees" name="Employees" parent="menu_dayflow_root" action="action_dayflow_employee" sequence="10"/>
+        <menuitem id="menu_dayflow_attendance" name="Attendance" parent="menu_dayflow_root" action="action_dayflow_attendance" sequence="20"/>
+        <menuitem id="menu_dayflow_leaves" name="Leaves" parent="menu_dayflow_root" action="action_dayflow_leave" sequence="30"/>
+        <menuitem id="menu_dayflow_payroll" name="Payroll" parent="menu_dayflow_root" action="action_dayflow_payroll" sequence="40" groups="dayflow.group_dayflow_hr"/>
+    </data>
+</odoo>

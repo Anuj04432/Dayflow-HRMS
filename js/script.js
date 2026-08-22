@@ -716,12 +716,22 @@ function renderHRLeaveQueue() {
 }
 
 function handleLeaveAction(leaveId, action) {
+    let comments = "";
+    if (action === 'reject') {
+        comments = prompt("Please enter a reason/comment for rejecting this leave request:") || "";
+        if (!comments.trim()) {
+            alert("A reason is required when rejecting a leave request.");
+            return;
+        }
+    }
+
     const leaves = JSON.parse(localStorage.getItem("dayflow_leaves") || "[]");
     const leave = leaves.find(l => l.id === leaveId);
     if (leave) {
         leave.state = action === 'approve' ? 'approved' : 'rejected';
+        if (comments) leave.manager_remarks = comments;
         localStorage.setItem("dayflow_leaves", JSON.stringify(leaves));
-        apiFetch('/api/leave/action', 'POST', { leave_id: leaveId, action }).catch(() => {});
+        apiFetch('/api/leave/action', 'POST', { leave_id: leaveId, action, comments }).catch(() => {});
         renderHRLeaveQueue();
     }
 }

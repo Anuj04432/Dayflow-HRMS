@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
-
-from . import models
-from . import controllers
+try:
+    from . import models
+    from . import controllers
+except ModuleNotFoundError:
+    pass
