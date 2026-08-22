@@ -19,7 +19,7 @@
         </div>
 
         <nav>
-            <a href="employee-dashboard.html">
+            <a id="navDashboard" href="employee-dashboard.html">
                 <span class="nav-icon">📊</span>
                 <span>Dashboard</span>
             </a>
@@ -68,7 +68,7 @@
         <header class="topbar">
             <div>
                 <h2>Attendance Tracking</h2>
-                <p>Track daily check-ins, check-outs, and work logs.</p>
+                <p>Monitor daily clock-ins, worked hours, and company rosters.</p>
             </div>
 
             <div class="user-box">
@@ -80,74 +80,159 @@
 
         <section class="dashboard-content">
 
-            <div class="attendance-actions section-card">
+            <!-- ================= EMPLOYEE ATTENDANCE SECTION ================= -->
+            <div id="employeeAttendanceSection">
 
-                <div>
-                    <h3>Today's Attendance Status</h3>
-                    <p id="attendanceStatus">
-                        Not checked in
-                    </p>
+                <div class="attendance-actions section-card">
+
+                    <div>
+                        <h3>Today's Attendance Status</h3>
+                        <p id="attendanceStatus">
+                            Not checked in
+                        </p>
+                    </div>
+
+                    <div class="action-buttons">
+
+                        <button
+                            type="button"
+                            class="primary-btn"
+                            onclick="checkIn()"
+                        >
+                            Check In
+                        </button>
+
+                        <button
+                            type="button"
+                            class="secondary-btn"
+                            onclick="checkOut()"
+                        >
+                            Check Out
+                        </button>
+
+                    </div>
+
                 </div>
 
-                <div class="action-buttons">
 
-                    <button
-                        type="button"
-                        class="primary-btn"
-                        onclick="checkIn()"
-                    >
-                        Check In
-                    </button>
+                <div class="section-card">
 
-                    <button
-                        type="button"
-                        class="secondary-btn"
-                        onclick="checkOut()"
-                    >
-                        Check Out
-                    </button>
+                    <div class="section-header">
+                        <h3>My Attendance Records</h3>
+
+                        <div class="tabs">
+                            <button type="button" class="tab active" onclick="switchAttendanceTab(this, 'daily')">
+                                Daily
+                            </button>
+
+                            <button type="button" class="tab" onclick="switchAttendanceTab(this, 'weekly')">
+                                Weekly
+                            </button>
+                        </div>
+                    </div>
+
+
+                    <div class="table-container">
+
+                        <table id="personalAttendanceTable">
+
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Check In</th>
+                                    <th>Check Out</th>
+                                    <th>Working Hours</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                <!-- Dynamically populated by script.js -->
+                            </tbody>
+
+                        </table>
+
+                    </div>
 
                 </div>
 
             </div>
 
 
-            <div class="section-card">
+            <!-- ================= HR COMPANY ATTENDANCE SECTION ================= -->
+            <div id="hrAttendanceSection" class="hidden">
 
-                <div class="section-header">
-                    <h3>Attendance Records</h3>
+                <div class="stats-grid">
 
-                    <div class="tabs">
-                        <button type="button" class="tab active" onclick="switchAttendanceTab(this, 'daily')">
-                            Daily
-                        </button>
-
-                        <button type="button" class="tab" onclick="switchAttendanceTab(this, 'weekly')">
-                            Weekly
-                        </button>
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <h3>Total Headcount</h3>
+                        <h2>124</h2>
+                        <p>Registered workforce</p>
                     </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">🕒</div>
+                        <h3>Present Today</h3>
+                        <h2 style="color: #16a34a;">112</h2>
+                        <p>Active check-ins</p>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">📅</div>
+                        <h3>On Leave</h3>
+                        <h2 style="color: #d97706;">2</h2>
+                        <p>Approved leaves today</p>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">⚠️</div>
+                        <h3>Absent</h3>
+                        <h2 style="color: #dc2626;">10</h2>
+                        <p>Unrecorded today</p>
+                    </div>
+
                 </div>
 
 
-                <div class="table-container">
+                <div class="section-card">
 
-                    <table id="attendanceTable">
+                    <div class="section-header">
+                        <h3>Company-Wide Daily Attendance Logs</h3>
 
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Check In</th>
-                                <th>Check Out</th>
-                                <th>Working Hours</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
+                        <input
+                            type="text"
+                            id="hrAttendanceSearch"
+                            class="search-input"
+                            placeholder="Filter by employee name, code, or department..."
+                            onkeyup="filterHRCompanyAttendance()"
+                            style="max-width: 320px;"
+                        >
+                    </div>
 
-                        <tbody>
-                            <!-- Dynamically rendered by script.js -->
-                        </tbody>
+                    <div class="table-container">
 
-                    </table>
+                        <table id="hrAttendanceTable">
+
+                            <thead>
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Department</th>
+                                    <th>Date</th>
+                                    <th>Check In</th>
+                                    <th>Check Out</th>
+                                    <th>Worked Hours</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                <!-- Dynamically populated by script.js -->
+                            </tbody>
+
+                        </table>
+
+                    </div>
 
                 </div>
 
