@@ -86,76 +86,13 @@
 
                 <div class="section-header">
                     <h3>Recent System Alerts</h3>
-                    <button type="button" class="secondary-btn" onclick="document.querySelectorAll('.notification-item').forEach(n => n.classList.remove('unread'))">
+                    <button type="button" class="secondary-btn" onclick="markAllNotificationsAsRead()">
                         ✓ Mark All as Read
                     </button>
                 </div>
 
-                <div class="notification-item unread" onclick="this.classList.toggle('unread')">
-
-                    <div class="notification-icon">
-                        📅
-                    </div>
-
-                    <div>
-                        <h3>Leave Request Processed</h3>
-                        <p>
-                            Your PTO application for the upcoming cycle is logged and under review.
-                        </p>
-                        <small>Today, 10:15 AM</small>
-                    </div>
-
-                </div>
-
-
-                <div class="notification-item" onclick="this.classList.toggle('unread')">
-
-                    <div class="notification-icon">
-                        🕒
-                    </div>
-
-                    <div>
-                        <h3>Attendance Clock Reminder</h3>
-                        <p>
-                            Don't forget to record your check-in timestamp before starting workday tasks.
-                        </p>
-                        <small>Today, 09:00 AM</small>
-                    </div>
-
-                </div>
-
-
-                <div class="notification-item" onclick="this.classList.toggle('unread')">
-
-                    <div class="notification-icon">
-                        💰
-                    </div>
-
-                    <div>
-                        <h3>Payroll Period Reconciled</h3>
-                        <p>
-                            August 2026 salary statements are now ready for preview and PDF export.
-                        </p>
-                        <small>Yesterday, 05:30 PM</small>
-                    </div>
-
-                </div>
-
-
-                <div class="notification-item" onclick="this.classList.toggle('unread')">
-
-                    <div class="notification-icon">
-                        👤
-                    </div>
-
-                    <div>
-                        <h3>Security & Profile Compliance</h3>
-                        <p>
-                            Please verify your contact phone and emergency details in My Profile.
-                        </p>
-                        <small>2 days ago</small>
-                    </div>
-
+                <div id="notificationsList">
+                    <p style="text-align: center; color: #6b7280; padding: 20px;">Loading notifications...</p>
                 </div>
 
             </div>
