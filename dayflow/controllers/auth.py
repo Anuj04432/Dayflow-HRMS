@@ -28,6 +28,13 @@ class DayflowAuthController(http.Controller):
         if not db:
             # Fallback to current database if available
             db = request.env.cr.dbname if hasattr(request, 'env') and request.env and request.env.cr else False
+        if not db and hasattr(http, 'db_list'):
+            try:
+                available_dbs = http.db_list()
+                if available_dbs:
+                    db = available_dbs[0]
+            except Exception:
+                pass
 
         try:
             # Authenticate via Odoo session
