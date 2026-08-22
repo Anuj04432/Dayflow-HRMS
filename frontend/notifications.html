@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dayflow - Notifications</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+
+<div class="dashboard-layout">
+
+    <aside class="sidebar">
+
+        <div class="sidebar-brand">
+            <h2>Dayflow</h2>
+            <span>Notifications</span>
+        </div>
+
+        <nav>
+            <a href="employee-dashboard.html">
+                <span class="nav-icon">📊</span>
+                <span>Dashboard</span>
+            </a>
+
+            <a href="profile.html">
+                <span class="nav-icon">👤</span>
+                <span>Profile</span>
+            </a>
+
+            <a href="attendance.html">
+                <span class="nav-icon">🕒</span>
+                <span>Attendance</span>
+            </a>
+
+            <a href="leave.html">
+                <span class="nav-icon">📅</span>
+                <span>Leave Requests</span>
+            </a>
+
+            <a href="payroll.html">
+                <span class="nav-icon">💰</span>
+                <span>Payroll</span>
+            </a>
+
+            <a href="notifications.html" class="active">
+                <span class="nav-icon">🔔</span>
+                <span>Notifications</span>
+            </a>
+
+            <a href="reports.html">
+                <span class="nav-icon">📈</span>
+                <span>Reports</span>
+            </a>
+        </nav>
+
+        <button type="button" class="logout-btn" onclick="logout()">
+            <span class="nav-icon">🚪</span>
+            <span>Logout</span>
+        </button>
+
+    </aside>
+
+
+    <main class="main-content">
+
+        <header class="topbar">
+
+            <div>
+                <h2>Alerts & Notifications</h2>
+                <p>Stay informed on attendance records, approvals, and payroll dispatches.</p>
+            </div>
+
+            <div class="user-box">
+                <div class="avatar">U</div>
+                <span>User</span>
+            </div>
+
+        </header>
+
+
+        <section class="dashboard-content">
+
+            <div class="section-card">
+
+                <div class="section-header">
+                    <h3>Recent System Alerts</h3>
+                    <button type="button" class="secondary-btn" onclick="document.querySelectorAll('.notification-item').forEach(n => n.classList.remove('unread'))">
+                        ✓ Mark All as Read
+                    </button>
+                </div>
+
+                <div class="notification-item unread" onclick="this.classList.toggle('unread')">
+
+                    <div class="notification-icon">
+                        📅
+                    </div>
+
+                    <div>
+                        <h3>Leave Request Processed</h3>
+                        <p>
+                            Your PTO application for the upcoming cycle is logged and under review.
+                        </p>
+                        <small>Today, 10:15 AM</small>
+                    </div>
+
+                </div>
+
+
+                <div class="notification-item" onclick="this.classList.toggle('unread')">
+
+                    <div class="notification-icon">
+                        🕒
+                    </div>
+
+                    <div>
+                        <h3>Attendance Clock Reminder</h3>
+                        <p>
+                            Don't forget to record your check-in timestamp before starting workday tasks.
+                        </p>
+                        <small>Today, 09:00 AM</small>
+                    </div>
+
+                </div>
+
+
+                <div class="notification-item" onclick="this.classList.toggle('unread')">
+
+                    <div class="notification-icon">
+                        💰
+                    </div>
+
+                    <div>
+                        <h3>Payroll Period Reconciled</h3>
+                        <p>
+                            August 2026 salary statements are now ready for preview and PDF export.
+                        </p>
+                        <small>Yesterday, 05:30 PM</small>
+                    </div>
+
+                </div>
+
+
+                <div class="notification-item" onclick="this.classList.toggle('unread')">
+
+                    <div class="notification-icon">
+                        👤
+                    </div>
+
+                    <div>
+                        <h3>Security & Profile Compliance</h3>
+                        <p>
+                            Please verify your contact phone and emergency details in My Profile.
+                        </p>
+                        <small>2 days ago</small>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+<script src="../js/script.js"></script>
+</body>
+</html>
