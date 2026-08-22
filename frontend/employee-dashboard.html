@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dayflow - Employee Dashboard</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+
+<div class="dashboard-layout">
+
+    <aside class="sidebar">
+
+        <div class="sidebar-brand">
+            <h2>Dayflow</h2>
+            <span>Employee</span>
+        </div>
+
+        <nav>
+            <a href="employee-dashboard.html" class="active">
+                <span class="nav-icon">📊</span>
+                <span>Dashboard</span>
+            </a>
+
+            <a href="profile.html">
+                <span class="nav-icon">👤</span>
+                <span>Profile</span>
+            </a>
+
+            <a href="attendance.html">
+                <span class="nav-icon">🕒</span>
+                <span>Attendance</span>
+            </a>
+
+            <a href="leave.html">
+                <span class="nav-icon">📅</span>
+                <span>Leave Requests</span>
+            </a>
+
+            <a href="payroll.html">
+                <span class="nav-icon">💰</span>
+                <span>Payroll</span>
+            </a>
+
+            <a href="notifications.html">
+                <span class="nav-icon">🔔</span>
+                <span>Notifications</span>
+            </a>
+
+            <a href="reports.html">
+                <span class="nav-icon">📈</span>
+                <span>Reports</span>
+            </a>
+        </nav>
+
+        <button type="button" class="logout-btn" onclick="logout()">
+            <span class="nav-icon">🚪</span>
+            <span>Logout</span>
+        </button>
+
+    </aside>
+
+
+    <main class="main-content">
+
+        <header class="topbar">
+
+            <div>
+                <h2>Employee Dashboard</h2>
+                <p>Welcome back, Employee!</p>
+            </div>
+
+            <div class="user-box">
+                <div class="avatar">E</div>
+                <span>Employee</span>
+            </div>
+
+        </header>
+
+
+        <section class="dashboard-content">
+
+            <div class="stats-grid">
+
+                <div class="stat-card">
+                    <div class="stat-icon">👤</div>
+                    <h3>Profile</h3>
+                    <p>View & update personal info</p>
+                    <a href="profile.html">View Profile →</a>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">🕒</div>
+                    <h3>Attendance</h3>
+                    <p>Track daily & weekly hours</p>
+                    <a href="attendance.html">View Attendance →</a>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">📅</div>
+                    <h3>Leave Requests</h3>
+                    <p>Apply & track approval status</p>
+                    <a href="leave.html">Manage Leave →</a>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">💰</div>
+                    <h3>Payroll</h3>
+                    <p>Salary breakdown & slips</p>
+                    <a href="payroll.html">View Payroll →</a>
+                </div>
+
+            </div>
+
+
+            <div class="section-card">
+
+                <div class="section-header">
+                    <h3>Recent Activity</h3>
+                    <a href="notifications.html" style="color: #4f46e5; font-size: 13px; font-weight: 600;">View All</a>
+                </div>
+
+                <div class="activity">
+
+                    <div class="activity-item">
+                        <span class="activity-dot"></span>
+                        <div>
+                            <strong>Attendance status logged</strong>
+                            <p>Daily check-in/out records synchronized.</p>
+                        </div>
+                    </div>
+
+                    <div class="activity-item">
+                        <span class="activity-dot"></span>
+                        <div>
+                            <strong>Leave request tracking</strong>
+                            <p>Check approval progress in leave management.</p>
+                        </div>
+                    </div>
+
+                    <div class="activity-item">
+                        <span class="activity-dot"></span>
+                        <div>
+                            <strong>Profile & Salary synced</strong>
+                            <p>Updated information is active for current pay cycle.</p>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+<script src="../js/script.js"></script>
+</body>
+</html>
