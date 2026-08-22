@@ -116,7 +116,7 @@ class DayflowLeaveController(http.Controller):
             return options_response()
 
         user = request.env.user
-        if not (user.has_group('dayflow.group_dayflow_hr') or user.id == 1):
+        if not (user.has_group('backend.group_dayflow_hr') or user.has_group('dayflow.group_dayflow_hr') or user.id == 1):
             return json_response(success=False, status=403, message='Access denied: HR privileges required.')
 
         pending_requests = request.env['dayflow.leave'].search(
@@ -146,7 +146,7 @@ class DayflowLeaveController(http.Controller):
             return options_response()
 
         user = request.env.user
-        if not (user.has_group('dayflow.group_dayflow_hr') or user.id == 1):
+        if not (user.has_group('backend.group_dayflow_hr') or user.has_group('dayflow.group_dayflow_hr') or user.id == 1):
             return json_response(success=False, status=403, message='Access denied: HR privileges required.')
 
         body = get_json_body()

@@ -47,7 +47,7 @@ class DayflowEmployee(models.Model):
         HR / Admin can update all fields.
         """
         self.ensure_one()
-        is_hr = self.env.user.has_group('dayflow.group_dayflow_hr')
+        is_hr = self.env.user.has_group('backend.group_dayflow_hr') or self.env.user.has_group('dayflow.group_dayflow_hr') or self.env.user.id == 1
         
         if not is_hr:
             allowed_fields = {'phone', 'address', 'image_1920'}

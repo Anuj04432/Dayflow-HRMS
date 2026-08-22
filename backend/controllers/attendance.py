@@ -169,7 +169,7 @@ class DayflowAttendanceController(http.Controller):
             return options_response()
 
         user = request.env.user
-        if not (user.has_group('dayflow.group_dayflow_hr') or user.id == 1):
+        if not (user.has_group('backend.group_dayflow_hr') or user.has_group('dayflow.group_dayflow_hr') or user.id == 1):
             return json_response(success=False, status=403, message='HR permissions required.')
 
         query_date = target_date or str(fields.Date.today())
