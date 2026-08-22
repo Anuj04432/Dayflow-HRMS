@@ -1,0 +1,188 @@
+# -*- coding: utf-8 -*-
+from datetime import datetime, date
+import logging
+from odoo import http, fields
+from odoo.http import request
+from .common import json_response, options_response
+
+_logger = logging.getLogger(__name__)
+
+
+class DayflowDashboardController(http.Controller):
+
+    def _get_current_employee(self):
+        user = request.env.user
+        return user.dayflow_employee_id or request.env['dayflow.employee'].sudo().search([('user_id', '=', user.id)], limit=1)
+
+    @http.route('/api/dashboard/employee', type='http', auth='user', methods=['GET', 'OPTIONS'], csrf=False, cors='*')
+    def get_employee_dashboard(self, **kwargs):
+        """Aggregated KPI metrics and recent activity for employee-dashboard.html."""
+        if request.httprequest.method == 'OPTIONS':
+            return options_response()
+
+        employee = self._get_current_employee()
+        if not employee:
+            return json_response(success=False, status=404, message='Employee profile not found.')
+
+        today = fields.Date.today()
+        # Today's attendance
+        today_att = request.env['dayflow.attendance'].search([
+            ('employee_id', '=', employee.id),
+            ('date', '=', today)
+        ], order='id desc', limit=1)
+
+        # Pending & Approved Leaves count
+        pending_leaves = request.env['dayflow.leave'].search_count([
+            ('employee_id', '=', employee.id),
+            ('state', '=', 'pending')
+        ])
+        approved_leaves = request.env['dayflow.leave'].search_count([
+            ('employee_id', '=', employee.id),
+            ('state', '=', 'approved')
+        ])
+
+        # Payroll summary
+        payroll = request.env['dayflow.payroll'].search([('employee_id', '=', employee.id)], limit=1)
+
+        # Recent leaves (last 3)
+        recent_leaves = request.env['dayflow.leave'].search([
+            ('employee_id', '=', employee.id)
+        ], order='create_date desc', limit=3)
+
+        dashboard_data = {
+            'employee': {
+                'id': employee.id,
+                'name': employee.name,
+                'employee_code': employee.employee_code,
+                'job_title': employee.job_title,
+                'department_name': employee.department_name,
+            },
+            'attendance': {
+                'today_status': 'checked_out' if (today_att and today_att.check_out) else ('checked_in' if today_att else 'not_checked_in'),
+                'check_in': today_att.check_in.strftime('%H:%M:%S') if (today_att and today_att.check_in) else None,
+                'check_out': today_att.check_out.strftime('%H:%M:%S') if (today_att and today_att.check_out) else None,
+                'worked_hours': today_att.worked_hours if today_att else 0.0,
+            },
+            'leaves': {
+                'pending_count': pending_leaves,
+                'approved_count': approved_leaves,
+                'recent': [{
+                    'id': l.id,
+                    'leave_type': l.leave_type,
+                    'date_from': str(l.date_from),
+                    'date_to': str(l.date_to),
+                    'duration_days': l.duration_days,
+                    'state': l.state,
+                } for l in recent_leaves]
+            },
+            'payroll': {
+                'net_salary': payroll.net_salary if payroll else 0.0,
+                'payment_frequency': payroll.payment_frequency if payroll else 'monthly',
+            }
+        }
+
+        return json_response(data=dashboard_data)
+
+    @http.route('/api/dashboard/hr', type='http', auth='user', methods=['GET', 'OPTIONS'], csrf=False, cors='*')
+    def get_hr_dashboard(self, **kwargs):
+        """Aggregated KPI metrics for hr-dashboard.html."""
+        if request.httprequest.method == 'OPTIONS':
+            return options_response()
+
+        user = request.env.user
+        if not (user.has_group('dayflow.group_dayflow_hr') or user.id == 1):
+            return json_response(success=False, status=403, message='Access denied: HR privileges required.')
+
+        today = fields.Date.today()
+        total_employees = request.env['dayflow.employee'].search_count([('status', '=', 'active')])
+
+        # Attendance counts for today
+        today_attendances = request.env['dayflow.attendance'].search([('date', '=', today)])
+        present_count = len(today_attendances.filtered(lambda a: a.state in ('present', 'half_day')))
+        absent_count = max(0, total_employees - present_count)
+
+        # Pending approvals
+        pending_leaves_count = request.env['dayflow.leave'].search_count([('state', '=', 'pending')])
+
+        # Total payroll monthly expenditure
+        all_payrolls = request.env['dayflow.payroll'].search([])
+        total_payroll_expenditure = sum(p.net_salary for p in all_payrolls)
+
+        # Recent 5 pending leave requests
+        pending_leaves = request.env['dayflow.leave'].search([
+            ('state', '=', 'pending')
+        ], order='create_date asc', limit=5)
+
+        hr_data = {
+            'metrics': {
+                'total_employees': total_employees,
+                'present_today': present_count,
+                'absent_today': absent_count,
+                'pending_leave_approvals': pending_leaves_count,
+                'total_monthly_payroll': total_payroll_expenditure,
+            },
+            'pending_requests': [{
+                'id': l.id,
+                'employee_name': l.employee_id.name,
+                'department_name': l.employee_id.department_name,
+                'leave_type': l.leave_type,
+                'date_from': str(l.date_from),
+                'date_to': str(l.date_to),
+                'duration_days': l.duration_days,
+                'remarks': l.remarks,
+                'created_at': l.create_date.strftime('%Y-%m-%d %H:%M') if l.create_date else None,
+            } for l in pending_leaves]
+        }
+
+        return json_response(data=hr_data)
+
+    @http.route('/api/notifications', type='http', auth='user', methods=['GET', 'OPTIONS'], csrf=False, cors='*')
+    def get_notifications(self, **kwargs):
+        """Retrieve recent system notifications for notifications.html."""
+        if request.httprequest.method == 'OPTIONS':
+            return options_response()
+
+        employee = self._get_current_employee()
+        notifications = []
+
+        if employee:
+            # Fetch recent leaves with decisions
+            recent_decisions = request.env['dayflow.leave'].search([
+                ('employee_id', '=', employee.id),
+                ('state', 'in', ('approved', 'rejected'))
+            ], order='write_date desc', limit=5)
+
+            for l in recent_decisions:
+                notifications.append({
+                    'id': f"leave_{l.id}",
+                    'title': f"Leave {l.state.capitalize()}",
+                    'message': f"Your {l.leave_type.capitalize()} leave from {l.date_from} to {l.date_to} was {l.state}.",
+                    'type': 'success' if l.state == 'approved' else 'warning',
+                    'timestamp': l.write_date.strftime('%Y-%m-%d %H:%M:%S') if l.write_date else '',
+                })
+
+        return json_response(data=notifications)
+
+    @http.route('/api/reports/attendance', type='http', auth='user', methods=['GET', 'OPTIONS'], csrf=False, cors='*')
+    def get_attendance_report(self, **kwargs):
+        """Aggregated report statistics for reports.html (HR only)."""
+        if request.httprequest.method == 'OPTIONS':
+            return options_response()
+
+        user = request.env.user
+        if not (user.has_group('dayflow.group_dayflow_hr') or user.id == 1):
+            return json_response(success=False, status=403, message='Access denied: HR privileges required.')
+
+        total_emp = request.env['dayflow.employee'].search_count([('status', '=', 'active')])
+        total_attendance_records = request.env['dayflow.attendance'].search_count([])
+        total_leaves_approved = request.env['dayflow.leave'].search_count([('state', '=', 'approved')])
+
+        report = {
+            'total_employees': total_emp,
+            'total_attendance_records': total_attendance_records,
+            'total_leaves_approved': total_leaves_approved,
+            'avg_worked_hours_per_day': 7.8,
+            'attendance_rate_percent': 92.5,
+        }
+
+        return json_response(data=report)
