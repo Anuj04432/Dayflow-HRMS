@@ -17,6 +17,7 @@ import uuid
 from datetime import datetime, date
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import urllib.request
+import urllib.parse
 import urllib.error
 
 # In-memory mock database
@@ -100,6 +101,7 @@ DB = {
 }
 
 ACTIVE_SESSIONS = {}
+CURRENT_SESSION = {'user_id': 1}
 
 
 class DayflowMockHandler(BaseHTTPRequestHandler):
@@ -107,7 +109,7 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
     def _set_headers(self, status=200):
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
-        # Fix 1: Dynamic Origin header reflecting incoming origin
+        # Dynamic Origin header reflecting incoming origin
         origin = self.headers.get('Origin') or '*'
         self.send_header('Access-Control-Allow-Origin', origin)
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
@@ -138,9 +140,35 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
             return json.loads(raw_data.decode('utf-8'))
         return {}
 
+    def _get_current_user_and_emp(self):
+        token = self.headers.get('Authorization') or self.headers.get('X-Dayflow-Token')
+        user = None
+        if token:
+            clean_tok = token.replace('Bearer ', '').strip()
+            user = ACTIVE_SESSIONS.get(clean_tok)
+        
+        if not user:
+            cookies = self.headers.get('Cookie', '')
+            for part in cookies.split(';'):
+                if 'session_id=' in part:
+                    sid = part.split('session_id=')[1].strip()
+                    user = ACTIVE_SESSIONS.get(sid)
+                    break
+
+        if not user and CURRENT_SESSION.get('user_id'):
+            user = next((u for u in DB['users'] if u['id'] == CURRENT_SESSION['user_id']), None)
+
+        if not user:
+            user = DB['users'][0]
+
+        emp = next((e for e in DB['employees'] if e['id'] == user.get('employee_id')), DB['employees'][0])
+        return user, emp
+
     def do_GET(self):
         parsed_path = self.path.split('?')
         path = parsed_path[0]
+        query_params = dict(urllib.parse.parse_qsl(parsed_path[1])) if len(parsed_path) > 1 else {}
+        user, emp = self._get_current_user_and_emp()
 
         if path in ('/', '/api', '/api/health'):
             self._send_json(
@@ -149,7 +177,6 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
             )
 
         elif path == '/api/auth/me':
-            user = DB['users'][-1]
             self._send_json(data={
                 'user_id': user['id'],
                 'employee_id': user['employee_id'],
@@ -161,14 +188,18 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
             })
 
         elif path == '/api/employee/profile':
-            emp = DB['employees'][-1]
-            self._send_json(data=emp)
+            target_emp = emp
+            query_emp_id = query_params.get('employee_id')
+            if query_emp_id and user.get('role') == 'hr':
+                found = next((e for e in DB['employees'] if e['id'] == int(query_emp_id)), None)
+                if found:
+                    target_emp = found
+            self._send_json(data=target_emp)
 
         elif path == '/api/employee/list':
             self._send_json(data=DB['employees'])
 
         elif path == '/api/attendance/today':
-            emp = DB['employees'][-1]
             today_str = str(date.today())
             att = next((a for a in reversed(DB['attendance']) if a['employee_id'] == emp['id'] and a['date'] == today_str), None)
             if not att:
@@ -178,26 +209,27 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
                 self._send_json(data={**att, 'status': status_str})
 
         elif path == '/api/attendance/history':
-            emp = DB['employees'][-1]
             records = [a for a in reversed(DB['attendance']) if a['employee_id'] == emp['id']]
             self._send_json(data=records)
 
         elif path == '/api/attendance/company':
-            # Enhanced company attendance with all employees
-            today_str = str(date.today())
+            target_date = query_params.get('date') or str(date.today())
+            target_dept = query_params.get('department')
             data = []
-            for emp in DB['employees']:
-                att = next((a for a in DB['attendance'] if a['employee_id'] == emp['id'] and a['date'] == today_str), None)
+            for e in DB['employees']:
+                if target_dept and target_dept.lower() not in (e.get('department_name') or '').lower():
+                    continue
+                att = next((a for a in DB['attendance'] if a['employee_id'] == e['id'] and a['date'] == target_date), None)
                 if att:
-                    data.append({**att, 'employee_name': emp['name'], 'employee_code': emp['employee_code'], 'department_name': emp['department_name']})
+                    data.append({**att, 'employee_name': e['name'], 'employee_code': e['employee_code'], 'department_name': e['department_name']})
                 else:
                     data.append({
                         'id': None,
-                        'employee_id': emp['id'],
-                        'employee_name': emp['name'],
-                        'employee_code': emp['employee_code'],
-                        'department_name': emp['department_name'],
-                        'date': today_str,
+                        'employee_id': e['id'],
+                        'employee_name': e['name'],
+                        'employee_code': e['employee_code'],
+                        'department_name': e['department_name'],
+                        'date': target_date,
                         'check_in': None,
                         'check_out': None,
                         'worked_hours': 0.0,
@@ -215,7 +247,6 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
             self._send_json(data=types)
 
         elif path == '/api/leave/my-requests':
-            emp = DB['employees'][-1]
             leaves = [l for l in reversed(DB['leaves']) if l['employee_id'] == emp['id']]
             self._send_json(data=leaves)
 
@@ -227,11 +258,17 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
             self._send_json(data=DB['leaves'])
 
         elif path == '/api/payroll/salary-info':
-            emp = DB['employees'][-1]
-            payroll = next((p for p in DB['payrolls'] if p['employee_id'] == emp['id']), None)
+            target_emp = emp
+            query_emp_id = query_params.get('employee_id')
+            if query_emp_id and user.get('role') == 'hr':
+                found = next((e for e in DB['employees'] if e['id'] == int(query_emp_id)), None)
+                if found:
+                    target_emp = found
+
+            payroll = next((p for p in DB['payrolls'] if p['employee_id'] == target_emp['id']), None)
             if not payroll:
                 payroll = {
-                    'employee_id': emp['id'],
+                    'employee_id': target_emp['id'],
                     'basic_salary': 50000.0,
                     'hra': 15000.0,
                     'special_allowance': 5000.0,
@@ -240,19 +277,19 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
                     'net_salary': 68000.0,
                     'payment_frequency': 'monthly',
                 }
-            self._send_json(data={**payroll, 'employee_name': emp['name'], 'employee_code': emp['employee_code'], 'job_title': emp['job_title']})
+            self._send_json(data={**payroll, 'employee_name': target_emp['name'], 'employee_code': target_emp['employee_code'], 'job_title': target_emp['job_title']})
 
         elif path == '/api/payroll/company':
-            # Endpoint: /api/payroll/company
             result = []
             for p in DB['payrolls']:
-                emp = next((e for e in DB['employees'] if e['id'] == p['employee_id']), None)
+                e = next((x for x in DB['employees'] if x['id'] == p['employee_id']), None)
                 result.append({
                     'id': p.get('id', 1),
                     'employee_id': p['employee_id'],
-                    'employee_name': emp['name'] if emp else 'Unknown',
-                    'employee_code': emp['employee_code'] if emp else '',
-                    'department_name': emp['department_name'] if emp else '',
+                    'employee_name': e['name'] if e else 'Unknown',
+                    'employee_code': e['employee_code'] if e else '',
+                    'department_name': e['department_name'] if e else '',
+                    'job_title': e['job_title'] if e else '',
                     'basic_salary': p['basic_salary'],
                     'hra': p.get('hra', 0.0),
                     'special_allowance': p.get('special_allowance', 0.0),
@@ -263,13 +300,18 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
             self._send_json(data=result)
 
         elif path == '/api/dashboard/employee':
-            emp = DB['employees'][-1]
             payroll = next((p for p in DB['payrolls'] if p['employee_id'] == emp['id']), None)
             pending_count = len([l for l in DB['leaves'] if l['employee_id'] == emp['id'] and l['state'] == 'pending'])
+            approved_count = len([l for l in DB['leaves'] if l['employee_id'] == emp['id'] and l['state'] == 'approved'])
+            today_str = str(date.today())
+            today_att = next((a for a in reversed(DB['attendance']) if a['employee_id'] == emp['id'] and a['date'] == today_str), None)
             self._send_json(data={
                 'employee': emp,
-                'attendance': {'today_status': 'checked_in', 'worked_hours': 4.5},
-                'leaves': {'pending_count': pending_count, 'approved_count': 1},
+                'attendance': {
+                    'today_status': 'checked_out' if (today_att and today_att.get('check_out')) else ('checked_in' if today_att else 'not_checked_in'),
+                    'worked_hours': today_att.get('worked_hours', 0.0) if today_att else 0.0
+                },
+                'leaves': {'pending_count': pending_count, 'approved_count': approved_count},
                 'payroll': {'net_salary': payroll['net_salary'] if payroll else 68000.0}
             })
 
@@ -279,8 +321,8 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
             self._send_json(data={
                 'metrics': {
                     'total_employees': total_emp,
-                    'present_today': 1,
-                    'absent_today': max(0, total_emp - 1),
+                    'present_today': len([a for a in DB['attendance'] if a['date'] == str(date.today()) and a['state'] in ('present', 'half_day')]),
+                    'absent_today': max(0, total_emp - len([a for a in DB['attendance'] if a['date'] == str(date.today())])),
                     'pending_leave_approvals': pending_leaves,
                     'total_monthly_payroll': sum(p['net_salary'] for p in DB['payrolls']),
                 }
@@ -288,7 +330,7 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
 
         elif path == '/api/notifications':
             self._send_json(data=[
-                {'id': 'notif_1', 'title': 'Welcome to Dayflow', 'message': 'System setup complete.', 'type': 'info'}
+                {'id': 'notif_1', 'title': 'Welcome to Dayflow', 'message': f'Signed in as {user["name"]}. System active.', 'type': 'info'}
             ])
 
         elif path == '/api/reports/attendance':
@@ -305,6 +347,7 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         path = self.path
         body = self._get_json_body()
+        user, emp = self._get_current_user_and_emp()
 
         if path == '/api/auth/signup':
             email = body.get('email', '').strip().lower()
@@ -320,7 +363,7 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
             user_id = len(DB['users']) + 1
             emp_id = len(DB['employees']) + 1
             token = str(uuid.uuid4())
-            emp_code = f"DF{emp_id:04d}"
+            emp_code = body.get('employee_code') or f"DF{emp_id:04d}"
 
             new_user = {
                 'id': user_id,
@@ -363,6 +406,8 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
                 'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             })
 
+            CURRENT_SESSION['user_id'] = user_id
+
             self._send_json(
                 data={'user_id': user_id, 'employee_id': emp_id, 'verification_token': token, 'employee_code': emp_code},
                 message='Registration successful. Verification token generated.',
@@ -372,13 +417,13 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
         elif path == '/api/auth/verify-email':
             email = body.get('email', '').strip().lower()
             token = body.get('token', '').strip()
-            user = next((u for u in DB['users'] if u['email'] == email), None)
+            target_user = next((u for u in DB['users'] if u['email'] == email), None)
 
-            if not user:
+            if not target_user:
                 return self._send_json(success=False, status=404, message='User not found.')
-            if user.get('verification_token') == token or token.startswith('mock-token') or not token:
-                user['is_verified'] = True
-                user['verification_token'] = None
+            if target_user.get('verification_token') == token or token.startswith('mock-token') or not token:
+                target_user['is_verified'] = True
+                target_user['verification_token'] = None
                 return self._send_json(message='Email verified successfully! You may now log in.')
             return self._send_json(success=False, status=400, message='Invalid verification token.')
 
@@ -391,11 +436,11 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
                     return p in ('password123', 'admin123')
                 return u.get('password') == p
 
-            user = next((u for u in DB['users'] if u['email'] == email and match_pass(u, password)), None)
+            target_user = next((u for u in DB['users'] if u['email'] == email and match_pass(u, password)), None)
 
-            if not user:
+            if not target_user:
                 return self._send_json(success=False, status=401, message='Invalid email or password.')
-            if not user['is_verified'] and user['email'] not in ('hr@dayflow.com', 'employee@dayflow.com'):
+            if not target_user['is_verified'] and target_user['email'] not in ('hr@dayflow.com', 'employee@dayflow.com'):
                 return self._send_json(
                     success=False,
                     status=403,
@@ -403,22 +448,23 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
                 )
 
             session_token = str(uuid.uuid4())
-            ACTIVE_SESSIONS[session_token] = user
+            ACTIVE_SESSIONS[session_token] = target_user
+            CURRENT_SESSION['user_id'] = target_user['id']
+
             self._send_json(
                 data={
-                    'user_id': user['id'],
-                    'employee_id': user['employee_id'],
-                    'name': user['name'],
-                    'email': user['email'],
-                    'role': user['role'],
-                    'employee_code': user['employee_code'],
+                    'user_id': target_user['id'],
+                    'employee_id': target_user['employee_id'],
+                    'name': target_user['name'],
+                    'email': target_user['email'],
+                    'role': target_user['role'],
+                    'employee_code': target_user['employee_code'],
                     'session_id': session_token
                 },
                 message='Login successful.'
             )
 
         elif path == '/api/attendance/check-in':
-            emp = DB['employees'][-1]
             now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             today_str = str(date.today())
             att_id = len(DB['attendance']) + 1
@@ -436,10 +482,9 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
             self._send_json(data=record, message='Checked in successfully!', status=201)
 
         elif path == '/api/attendance/check-out':
-            emp = DB['employees'][-1]
             now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             today_str = str(date.today())
-            att = next((a for a in reversed(DB['attendance']) if a['employee_id'] == emp['id'] and a['date'] == today_str and not a['check_out']), None)
+            att = next((a for a in reversed(DB['attendance']) if a['employee_id'] == emp['id'] and not a['check_out']), None)
             if not att:
                 return self._send_json(success=False, status=400, message='No active check-in found.')
             att['check_out'] = now_str
@@ -447,7 +492,6 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
             self._send_json(data=att, message='Checked out successfully.')
 
         elif path == '/api/leave/apply':
-            emp = DB['employees'][-1]
             leave_id = len(DB['leaves']) + 1
             new_leave = {
                 'id': leave_id,
@@ -479,7 +523,7 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
             req['state'] = 'approved' if action == 'approve' else 'rejected'
             req['manager_remarks'] = comments
 
-            # Fix 3: Sync approved leave with attendance
+            # Sync approved leave with attendance
             if action == 'approve':
                 today_str = str(date.today())
                 if req['date_from'] <= today_str <= req['date_to']:
@@ -509,14 +553,29 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
     def do_PUT(self):
         path = self.path
         body = self._get_json_body()
+        user, emp = self._get_current_user_and_emp()
 
         if path == '/api/employee/profile':
-            emp = DB['employees'][-1]
+            target_emp = emp
+            target_id = body.get('employee_id')
+            if target_id and user.get('role') == 'hr':
+                found = next((e for e in DB['employees'] if e['id'] == int(target_id)), None)
+                if found:
+                    target_emp = found
+
             if 'phone' in body:
-                emp['phone'] = body['phone']
+                target_emp['phone'] = body['phone']
             if 'address' in body:
-                emp['address'] = body['address']
-            self._send_json(data=emp, message='Profile updated successfully.')
+                target_emp['address'] = body['address']
+            if user.get('role') == 'hr':
+                if 'name' in body and body['name']:
+                    target_emp['name'] = body['name']
+                if 'job_title' in body and body['job_title']:
+                    target_emp['job_title'] = body['job_title']
+                if 'department_name' in body and body['department_name']:
+                    target_emp['department_name'] = body['department_name']
+
+            self._send_json(data=target_emp, message='Profile updated successfully.')
 
         elif path == '/api/payroll/update':
             emp_id = int(body.get('employee_id', 1))
@@ -637,7 +696,6 @@ def run_tests():
     print(">>> [Test 8: Acceptance Criteria 3] Leave Workflow & Attendance Sync Test...")
     res_action, _ = make_req('/api/leave/action', 'POST', {'leave_id': leave_id, 'action': 'approve', 'comments': 'Approved'})
     assert res_action['data']['state'] == 'approved'
-    # Verify today's attendance state changed to 'leave'
     today_att, _ = make_req('/api/attendance/today', 'GET')
     assert today_att['data']['state'] == 'leave', f"Expected state 'leave', got {today_att['data']['state']}"
     test_results.append(("8. Leave Approval Attendance Sync", "PASS", f"Today's attendance auto-synced to state: '{today_att['data']['state']}'"))

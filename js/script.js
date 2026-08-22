@@ -982,6 +982,55 @@ function showSalarySlipModal(user) {
 
 
 /* =========================================================
+   DASHBOARD DYNAMIC DATA BINDING (HR & EMPLOYEE)
+========================================================= */
+
+async function setupHRDashboard(user) {
+    if (!window.location.pathname.endsWith("hr-dashboard.html") || !user) return;
+
+    try {
+        const res = await apiFetch('/api/dashboard/hr');
+        if (res && res.success && res.data && res.data.metrics) {
+            const m = res.data.metrics;
+            if (document.getElementById("kpiEmployees")) document.getElementById("kpiEmployees").textContent = m.total_employees;
+            if (document.getElementById("kpiAttendance")) document.getElementById("kpiAttendance").textContent = m.present_today;
+            if (document.getElementById("kpiLeaves")) document.getElementById("kpiLeaves").textContent = m.pending_leave_approvals;
+            if (document.getElementById("kpiPayroll")) document.getElementById("kpiPayroll").textContent = `₹${(m.total_monthly_payroll / 100000).toFixed(1)}L`;
+        }
+    } catch (e) {}
+
+    // Load Live Employee Directory
+    try {
+        const empRes = await apiFetch('/api/employee/list');
+        const employees = (empRes && empRes.success && Array.isArray(empRes.data)) ? empRes.data : JSON.parse(localStorage.getItem("dayflow_users") || "[]");
+        const tbody = document.querySelector("#employeeTable tbody");
+        if (tbody && employees.length > 0) {
+            tbody.innerHTML = "";
+            employees.forEach(emp => {
+                const tr = document.createElement("tr");
+                const isHrRole = emp.role === 'hr' || (emp.department_name && emp.department_name.toLowerCase().includes("hr"));
+                tr.innerHTML = `
+                    <td>${emp.employee_code || "DF0001"}</td>
+                    <td><strong>${emp.name}</strong></td>
+                    <td>${emp.work_email || emp.email}</td>
+                    <td>${emp.department_name || emp.department || "General"}</td>
+                    <td><span class="status ${emp.status === 'inactive' ? 'rejected' : 'active'}">${emp.status ? emp.status.toUpperCase() : (isHrRole ? "ACTIVE (HR)" : "ACTIVE")}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    } catch (e) {}
+}
+
+async function setupEmployeeDashboard(user) {
+    if (!window.location.pathname.endsWith("employee-dashboard.html") || !user) return;
+    const welcomeHeader = document.querySelector(".topbar div p");
+    if (welcomeHeader && user.name) {
+        welcomeHeader.textContent = `Welcome back, ${user.name}!`;
+    }
+}
+
+/* =========================================================
    SEARCH & EMPLOYEE LIST (HR DASHBOARD)
 ========================================================= */
 
@@ -1006,8 +1055,36 @@ function searchEmployees() {
    PROFILE MANAGEMENT (LIVE API INTEGRATION)
 ========================================================= */
 
+function renderProfileFields(emp) {
+    if (!emp) return;
+    if (document.getElementById("profileName")) document.getElementById("profileName").textContent = emp.name || "Employee";
+    if (document.getElementById("profileEmpId")) document.getElementById("profileEmpId").textContent = emp.employee_code || "DF0001";
+    if (document.getElementById("profileEmpIdText")) document.getElementById("profileEmpIdText").textContent = emp.employee_code || "DF0001";
+    if (document.getElementById("profileEmail")) document.getElementById("profileEmail").textContent = emp.work_email || emp.email || "";
+    if (document.getElementById("profileDept")) document.getElementById("profileDept").textContent = emp.department_name || emp.department || "Engineering";
+    if (document.getElementById("profilePhone") && emp.phone) document.getElementById("profilePhone").value = emp.phone;
+    if (document.getElementById("profileAddress") && emp.address) document.getElementById("profileAddress").value = emp.address;
+
+    // Job Details
+    if (document.getElementById("jobDept")) document.getElementById("jobDept").textContent = emp.department_name || emp.department || (emp.role === 'hr' ? "Human Resources" : "Engineering");
+    if (document.getElementById("jobDesignation")) document.getElementById("jobDesignation").textContent = emp.job_title || emp.designation || (emp.role === 'hr' ? "HR Manager" : "Software Engineer");
+    if (document.getElementById("jobJoinDate")) document.getElementById("jobJoinDate").textContent = emp.join_date || "-";
+    if (document.getElementById("jobStatus")) document.getElementById("jobStatus").textContent = (emp.status || "active").toUpperCase();
+
+    // Avatar Initials
+    const avatarElem = document.querySelector(".profile-picture span");
+    if (avatarElem && emp.name) {
+        avatarElem.textContent = emp.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
+    }
+}
+
 async function loadProfile() {
     if (!window.location.pathname.endsWith("profile.html")) return;
+
+    const currentUser = getCurrentUser();
+    if (currentUser) {
+        renderProfileFields(currentUser);
+    }
 
     let emp = null;
     let salary = null;
@@ -1016,66 +1093,27 @@ async function loadProfile() {
         const res = await apiFetch('/api/employee/profile');
         if (res && res.success && res.data) {
             emp = res.data;
+            renderProfileFields(emp);
         }
     } catch (err) {
         console.warn("Using offline profile fallback", err);
     }
 
-    if (!emp) {
-        const user = getCurrentUser();
-        if (user) {
-            emp = {
-                name: user.name,
-                employee_code: user.employee_code || "DF0001",
-                work_email: user.email,
-                department_name: user.department || (user.role === 'hr' ? "Human Resources" : "Engineering"),
-                phone: user.phone || "+91 98765 43210",
-                address: user.address || "Bengaluru, India",
-                job_title: user.designation || (user.role === 'hr' ? "HR Manager" : "Software Engineer"),
-                join_date: user.join_date || "2025-03-01",
-                status: "active"
-            };
+    // Salary Structure Card
+    try {
+        const salRes = await apiFetch('/api/payroll/salary-info');
+        if (salRes && salRes.success && salRes.data) {
+            salary = salRes.data;
         }
-    }
+    } catch (e) {}
 
-    if (emp) {
-        if (document.getElementById("profileName")) document.getElementById("profileName").textContent = emp.name;
-        if (document.getElementById("profileEmpId")) document.getElementById("profileEmpId").textContent = emp.employee_code;
-        if (document.getElementById("profileEmpIdText")) document.getElementById("profileEmpIdText").textContent = emp.employee_code;
-        if (document.getElementById("profileEmail")) document.getElementById("profileEmail").textContent = emp.work_email;
-        if (document.getElementById("profileDept")) document.getElementById("profileDept").textContent = emp.department_name;
-        if (document.getElementById("profilePhone")) document.getElementById("profilePhone").value = emp.phone || "";
-        if (document.getElementById("profileAddress")) document.getElementById("profileAddress").value = emp.address || "";
+    const basic = salary ? (salary.basic_salary || 0) : (currentUser?.basic_salary || 35000);
+    const allowances = salary ? ((salary.hra || 0) + (salary.special_allowance || 0)) : ((currentUser?.hra || 8000) + (currentUser?.allowances || 5000));
+    const gross = salary ? (salary.gross_salary || (basic + allowances)) : (basic + allowances);
 
-        // Job Details
-        if (document.getElementById("jobDept")) document.getElementById("jobDept").textContent = emp.department_name || "General";
-        if (document.getElementById("jobDesignation")) document.getElementById("jobDesignation").textContent = emp.job_title || "Employee";
-        if (document.getElementById("jobJoinDate")) document.getElementById("jobJoinDate").textContent = emp.join_date || "-";
-        if (document.getElementById("jobStatus")) document.getElementById("jobStatus").textContent = (emp.status || "active").toUpperCase();
-
-        // Salary Structure Card
-        try {
-            const salRes = await apiFetch('/api/payroll/salary-info');
-            if (salRes && salRes.success && salRes.data) {
-                salary = salRes.data;
-            }
-        } catch (e) {}
-
-        const user = getCurrentUser() || {};
-        const basic = salary ? (salary.basic_salary || 0) : (user.basic_salary || 35000);
-        const allowances = salary ? ((salary.hra || 0) + (salary.special_allowance || 0)) : ((user.hra || 8000) + (user.allowances || 5000));
-        const gross = salary ? (salary.gross_salary || (basic + allowances)) : (basic + allowances);
-
-        if (document.getElementById("profileBasic")) document.getElementById("profileBasic").textContent = `₹${basic.toLocaleString()}`;
-        if (document.getElementById("profileAllowances")) document.getElementById("profileAllowances").textContent = `₹${allowances.toLocaleString()}`;
-        if (document.getElementById("profileGross")) document.getElementById("profileGross").textContent = `₹${gross.toLocaleString()}`;
-
-        // Avatar Initials
-        const avatarElem = document.querySelector(".profile-picture span");
-        if (avatarElem && emp.name) {
-            avatarElem.textContent = emp.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
-        }
-    }
+    if (document.getElementById("profileBasic")) document.getElementById("profileBasic").textContent = `₹${basic.toLocaleString()}`;
+    if (document.getElementById("profileAllowances")) document.getElementById("profileAllowances").textContent = `₹${allowances.toLocaleString()}`;
+    if (document.getElementById("profileGross")) document.getElementById("profileGross").textContent = `₹${gross.toLocaleString()}`;
 }
 
 async function saveProfile() {
@@ -1174,6 +1212,8 @@ document.addEventListener("DOMContentLoaded", function() {
     setupSidebarAndNav(user);
 
     // Apply role-based views on shared pages
+    setupHRDashboard(user);
+    setupEmployeeDashboard(user);
     setupAttendancePage(user);
     setupLeavePage(user);
     setupPayrollPage(user);
