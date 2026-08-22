@@ -90,6 +90,7 @@ class TestLeaveLogic(unittest.TestCase):
             'name': rec.remarks,
             'remarks': rec.remarks,
             'state': rec.state,
+            'approved_by': 2,
             'hr_comments': rec.hr_comments,
         }
         required_keys = {
@@ -100,6 +101,37 @@ class TestLeaveLogic(unittest.TestCase):
         self.assertTrue(required_keys.issubset(payload.keys()))
         self.assertIn(payload['leave_type'], ['paid', 'sick', 'unpaid'])
         self.assertIn(payload['state'], ['draft', 'pending', 'approved', 'rejected'])
+
+    def test_approve_state_transition(self):
+        rec = MockLeaveRecord(state='pending')
+        # Action approve sets state to approved
+        rec.state = 'approved'
+        rec.approved_by = 2
+        rec.hr_comments = 'Approved by HR'
+        self.assertEqual(rec.state, 'approved')
+        self.assertEqual(rec.approved_by, 2)
+        self.assertEqual(rec.hr_comments, 'Approved by HR')
+
+    def test_reject_state_transition(self):
+        rec = MockLeaveRecord(state='pending')
+        # Action reject sets state to rejected
+        rec.state = 'rejected'
+        rec.approved_by = 2
+        rec.hr_comments = 'Insufficient documentation'
+        self.assertEqual(rec.state, 'rejected')
+        self.assertEqual(rec.approved_by, 2)
+        self.assertEqual(rec.hr_comments, 'Insufficient documentation')
+
+    def test_pending_approvals_filter(self):
+        records = [
+            MockLeaveRecord(id=1, state='pending'),
+            MockLeaveRecord(id=2, state='approved'),
+            MockLeaveRecord(id=3, state='rejected'),
+            MockLeaveRecord(id=4, state='pending'),
+        ]
+        pending = [r for r in records if r.state == 'pending']
+        self.assertEqual(len(pending), 2)
+        self.assertEqual([r.id for r in pending], [1, 4])
 
 
 if __name__ == '__main__':

@@ -25,6 +25,12 @@ class MockModel:
         for k, v in kwargs.items():
             setattr(self, k, v)
 
+    def __iter__(self):
+        yield self
+
+    def sudo(self):
+        return self
+
     def search(self, domain, **kwargs):
         # simple mock search
         return self
@@ -193,6 +199,64 @@ class TestDayflowLeaveModel(unittest.TestCase):
         with self.assertRaises(MockExceptions.ValidationError):
             DayflowLeave.action_apply_leave(DayflowLeave(), 1, 'paid', date(2026, 8, 25), date(2026, 8, 27), '')
 
+    def test_action_approve_success(self):
+        rec = DayflowLeave(state='pending')
+        rec.env = MockModel(user=MockModel(id=1, has_group=lambda g: True))
+        DayflowLeave.action_approve(rec, comments="Approved by HR")
+        self.assertEqual(rec.state, 'approved')
+        self.assertEqual(rec.approved_by, 1)
+        self.assertEqual(rec.hr_comments, 'Approved by HR')
+
+    def test_action_approve_invalid_state_already_approved(self):
+        rec = DayflowLeave(state='approved')
+        rec.env = MockModel(user=MockModel(id=1, has_group=lambda g: True))
+        with self.assertRaises(MockExceptions.ValidationError):
+            DayflowLeave.action_approve(rec, comments="Re-approval attempt")
+
+    def test_action_approve_invalid_state_already_rejected(self):
+        rec = DayflowLeave(state='rejected')
+        rec.env = MockModel(user=MockModel(id=1, has_group=lambda g: True))
+        with self.assertRaises(MockExceptions.ValidationError):
+            DayflowLeave.action_approve(rec, comments="Approve rejected attempt")
+
+    def test_action_reject_success(self):
+        rec = DayflowLeave(state='pending')
+        rec.env = MockModel(user=MockModel(id=1, has_group=lambda g: True))
+        DayflowLeave.action_reject(rec, comments="Missing documentation")
+        self.assertEqual(rec.state, 'rejected')
+        self.assertEqual(rec.approved_by, 1)
+        self.assertEqual(rec.hr_comments, 'Missing documentation')
+
+    def test_action_reject_requires_comments(self):
+        rec = DayflowLeave(state='pending')
+        rec.env = MockModel(user=MockModel(id=1, has_group=lambda g: True))
+        with self.assertRaises(MockExceptions.ValidationError):
+            DayflowLeave.action_reject(rec, comments="")
+
+    def test_action_reject_invalid_state_already_approved(self):
+        rec = DayflowLeave(state='approved')
+        rec.env = MockModel(user=MockModel(id=1, has_group=lambda g: True))
+        with self.assertRaises(MockExceptions.ValidationError):
+            DayflowLeave.action_reject(rec, comments="Reject approved attempt")
+
+    def test_action_reject_invalid_state_already_rejected(self):
+        rec = DayflowLeave(state='rejected')
+        rec.env = MockModel(user=MockModel(id=1, has_group=lambda g: True))
+        with self.assertRaises(MockExceptions.ValidationError):
+            DayflowLeave.action_reject(rec, comments="Re-reject attempt")
+
+    def test_action_approve_unauthorized_user(self):
+        rec = DayflowLeave(state='pending')
+        rec.env = MockModel(user=MockModel(id=10, has_group=lambda g: False))
+        with self.assertRaises(MockExceptions.AccessError):
+            DayflowLeave.action_approve(rec, comments="Unauthorized")
+
+    def test_action_reject_unauthorized_user(self):
+        rec = DayflowLeave(state='pending')
+        rec.env = MockModel(user=MockModel(id=10, has_group=lambda g: False))
+        with self.assertRaises(MockExceptions.AccessError):
+            DayflowLeave.action_reject(rec, comments="Unauthorized")
+
 
 class TestDayflowAttendanceModel(unittest.TestCase):
 
@@ -350,6 +414,41 @@ class TestAttendanceControllerAndSecurity(unittest.TestCase):
 
         self.assertFalse(is_emp_hr)
         self.assertTrue(is_hr_hr)
+
+
+class TestAttendanceLeaveSynchronization(unittest.TestCase):
+
+    def test_approved_leave_sync_attendance_status(self):
+        rec = DayflowAttendance()
+        rec.employee_id = MockModel(id=1)
+        rec.date = date(2026, 8, 25)
+        rec.check_in = datetime(2026, 8, 25, 9, 0)
+        rec.check_out = datetime(2026, 8, 25, 17, 0)
+        rec.worked_hours = 8.0
+
+        # Mock leave search returning an approved leave
+        mock_leave_model = MockModel()
+        mock_leave_model.search = lambda domain, **kwargs: MockModel(id=10, state='approved')
+        rec.env = {'dayflow.leave': mock_leave_model}
+
+        DayflowAttendance._compute_status([rec])
+        self.assertEqual(rec.status, 'leave')
+
+    def test_pending_leave_does_not_sync_attendance_status(self):
+        rec = DayflowAttendance()
+        rec.employee_id = MockModel(id=1)
+        rec.date = date(2026, 8, 25)
+        rec.check_in = datetime(2026, 8, 25, 9, 0)
+        rec.check_out = datetime(2026, 8, 25, 17, 0)
+        rec.worked_hours = 8.0
+
+        # Mock leave search returning empty for approved state
+        mock_leave_model = MockModel()
+        mock_leave_model.search = lambda domain, **kwargs: False
+        rec.env = {'dayflow.leave': mock_leave_model}
+
+        DayflowAttendance._compute_status([rec])
+        self.assertEqual(rec.status, 'present')
 
 
 if __name__ == '__main__':
