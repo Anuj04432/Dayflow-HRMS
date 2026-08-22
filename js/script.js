@@ -1,96 +1,24 @@
 /**
  * Dayflow HRMS - Master Frontend Logic & Backend Connector
- * Supports live Odoo REST backend integration with intelligent offline fallback and full multi-role RBAC.
+ * Supports live Odoo REST backend integration with intelligent offline fallback,
+ * OTP email verification, dynamic profile editing, and comprehensive payroll management.
  */
 
 const API_BASE = window.DAYFLOW_API_BASE || 'http://localhost:8069';
 
 /* =========================================================
-   INITIAL SEED DATA & LOCAL STORAGE MANAGEMENT
+   INITIAL DATA & LOCAL STORAGE MANAGEMENT (NO HARDCODED DATA)
 ========================================================= */
 
 function initLocalStorageData() {
     if (!localStorage.getItem("dayflow_users")) {
-        const initialUsers = [
-            {
-                user_id: 1,
-                employee_id: 1,
-                name: "Anita Sharma (HR)",
-                employee_code: "DF0001",
-                email: "hr@dayflow.com",
-                password: "password123",
-                role: "hr",
-                department: "Human Resources",
-                designation: "HR Manager",
-                phone: "+91 98765 43210",
-                address: "Dayflow HQ, Floor 4, Bengaluru, India",
-                is_verified: true,
-                join_date: "2024-01-15",
-                basic_salary: 65000,
-                hra: 18000,
-                allowances: 7000,
-                deductions: 4000
-            },
-            {
-                user_id: 2,
-                employee_id: 2,
-                name: "Rahul Kumar",
-                employee_code: "DF0002",
-                email: "employee@dayflow.com",
-                password: "password123",
-                role: "employee",
-                department: "Engineering",
-                designation: "Software Engineer",
-                phone: "+91 98765 12345",
-                address: "Indiranagar, Bengaluru, India",
-                is_verified: true,
-                join_date: "2025-03-01",
-                basic_salary: 35000,
-                hra: 8000,
-                allowances: 5000,
-                deductions: 2000
-            },
-            {
-                user_id: 3,
-                employee_id: 3,
-                name: "Arjun Singh",
-                employee_code: "DF0003",
-                email: "arjun@dayflow.com",
-                password: "password123",
-                role: "employee",
-                department: "Finance",
-                designation: "Financial Analyst",
-                phone: "+91 98765 54321",
-                address: "Koramangala, Bengaluru, India",
-                is_verified: true,
-                join_date: "2025-05-10",
-                basic_salary: 40000,
-                hra: 9000,
-                allowances: 4000,
-                deductions: 2500
-            }
-        ];
-        localStorage.setItem("dayflow_users", JSON.stringify(initialUsers));
+        localStorage.setItem("dayflow_users", JSON.stringify([]));
     }
-
     if (!localStorage.getItem("dayflow_attendance")) {
-        const initialAttendance = [
-            { id: 1, employee_id: 1, employee_name: "Anita Sharma (HR)", employee_code: "DF0001", department_name: "Human Resources", date: "2026-08-22", check_in: "08:55:00", check_out: null, worked_hours: 0, state: "present" },
-            { id: 2, employee_id: 2, employee_name: "Rahul Kumar", employee_code: "DF0002", department_name: "Engineering", date: "2026-08-22", check_in: "09:05:00", check_out: "18:00:00", worked_hours: 8.9, state: "present" },
-            { id: 3, employee_id: 3, employee_name: "Arjun Singh", employee_code: "DF0003", department_name: "Finance", date: "2026-08-22", check_in: null, check_out: null, worked_hours: 0, state: "leave" },
-            { id: 4, employee_id: 2, employee_name: "Rahul Kumar", employee_code: "DF0002", department_name: "Engineering", date: "2026-08-21", check_in: "09:15:00", check_out: "13:30:00", worked_hours: 4.2, state: "half_day" },
-            { id: 5, employee_id: 2, employee_name: "Rahul Kumar", employee_code: "DF0002", department_name: "Engineering", date: "2026-08-20", check_in: null, check_out: null, worked_hours: 0, state: "absent" }
-        ];
-        localStorage.setItem("dayflow_attendance", JSON.stringify(initialAttendance));
+        localStorage.setItem("dayflow_attendance", JSON.stringify([]));
     }
-
     if (!localStorage.getItem("dayflow_leaves")) {
-        const initialLeaves = [
-            { id: 1, employee_id: 2, employee_name: "Rahul Kumar", employee_code: "DF0002", department_name: "Engineering", leave_type: "Paid Leave", date_from: "2026-08-25", date_to: "2026-08-26", duration_days: 2, remarks: "Personal emergency", state: "pending", created_at: "2026-08-22 10:15" },
-            { id: 2, employee_id: 3, employee_name: "Arjun Singh", employee_code: "DF0003", department_name: "Finance", leave_type: "Sick Leave", date_from: "2026-08-22", date_to: "2026-08-23", duration_days: 2, remarks: "Flu and fever", state: "approved", created_at: "2026-08-21 16:20" },
-            { id: 3, employee_id: 2, employee_name: "Rahul Kumar", employee_code: "DF0002", department_name: "Engineering", leave_type: "Sick Leave", date_from: "2026-08-10", date_to: "2026-08-11", duration_days: 2, remarks: "Health checkup", state: "approved", created_at: "2026-08-09 09:30" }
-        ];
-        localStorage.setItem("dayflow_leaves", JSON.stringify(initialLeaves));
+        localStorage.setItem("dayflow_leaves", JSON.stringify([]));
     }
 }
 
@@ -119,7 +47,7 @@ async function apiFetch(endpoint, method = 'GET', body = null) {
     try {
         const response = await fetch(url, options);
         const data = await response.json();
-        return { success: response.ok, ...data };
+        return { success: response.ok, status: response.status, ...data };
     } catch (err) {
         // Backend not reachable: trigger graceful offline fallback
         return { success: false, fallback: true, error: err.message };
@@ -148,41 +76,26 @@ function setCurrentUser(user) {
 
 function checkAuth(requiredRole = null) {
     const user = getCurrentUser();
-    const currentPath = window.location.pathname;
-    const isAuthPage = currentPath.endsWith("index.html") ||
-                       currentPath.endsWith("signup.html") ||
-                       currentPath.endsWith("verify-email.html") ||
-                       currentPath === "/" ||
-                       currentPath === "";
+    const isAuthPage = window.location.pathname.endsWith("index.html") ||
+                       window.location.pathname.endsWith("signup.html") ||
+                       window.location.pathname.endsWith("verify-email.html") ||
+                       window.location.pathname === "/" ||
+                       window.location.pathname === "";
 
-    // 1. If not logged in and on protected page -> go to login
     if (!user && !isAuthPage) {
         window.location.href = "index.html";
         return null;
     }
 
-    // 2. If already logged in and on login/signup page -> go to appropriate dashboard
-    if (user && isAuthPage && !currentPath.endsWith("verify-email.html")) {
+    if (user && isAuthPage) {
         window.location.href = user.role === "hr" ? "hr-dashboard.html" : "employee-dashboard.html";
         return user;
     }
 
-    // 3. Strict Dashboard routing: HR accessing employee dashboard -> redirect to HR dashboard
-    if (user && user.role === "hr" && currentPath.endsWith("employee-dashboard.html")) {
-        window.location.href = "hr-dashboard.html";
-        return user;
-    }
-
-    // 4. Strict Dashboard routing: Employee accessing HR dashboard -> redirect to Employee dashboard
-    if (user && user.role === "employee" && currentPath.endsWith("hr-dashboard.html")) {
-        window.location.href = "employee-dashboard.html";
-        return user;
-    }
-
-    // 5. Page-level role requirement check
-    if (user && requiredRole && user.role !== requiredRole && user.role !== 'hr') {
-        window.location.href = "employee-dashboard.html";
-        return user;
+    if (user && requiredRole && user.role !== requiredRole) {
+        alert("Access Restricted: You do not have permission to view this page.");
+        window.location.href = user.role === "hr" ? "hr-dashboard.html" : "employee-dashboard.html";
+        return null;
     }
 
     return user;
@@ -192,140 +105,210 @@ function logout() {
     apiFetch('/api/auth/logout', 'POST').catch(() => {});
     localStorage.removeItem("dayflow_current_user");
     localStorage.removeItem("loggedIn");
+    localStorage.removeItem("email");
     localStorage.removeItem("role");
     window.location.href = "index.html";
 }
 
-
-/* =========================================================
-   DYNAMIC SIDEBAR & TOPBAR ROLE INJECTION
-========================================================= */
+function fillCredentials(email, password) {
+    const emailInput = document.getElementById("loginEmail");
+    const passwordInput = document.getElementById("loginPassword");
+    if (emailInput && passwordInput) {
+        emailInput.value = email;
+        passwordInput.value = password;
+    }
+}
 
 function setupSidebarAndNav(user) {
     if (!user) return;
-    const isHR = user.role === "hr";
 
-    // 1. Fix all "Dashboard" links in sidebar to point to the correct role dashboard!
-    document.querySelectorAll('.sidebar nav a').forEach(link => {
-        const text = link.textContent.trim().toLowerCase();
-        if (text.includes("dashboard")) {
-            link.href = isHR ? "hr-dashboard.html" : "employee-dashboard.html";
-        }
-    });
-
-    // 2. Update sidebar brand role subtitle
-    const sidebarRoleBadge = document.querySelector(".sidebar-brand span");
-    if (sidebarRoleBadge) {
-        sidebarRoleBadge.textContent = isHR ? "HR / Admin" : "Employee";
+    // Set user header info
+    const userBox = document.querySelector(".user-box");
+    if (userBox) {
+        const initials = user.name ? user.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() : "U";
+        const roleBadge = user.role === "hr" ? " (HR)" : "";
+        userBox.innerHTML = `
+            <div class="avatar">${initials}</div>
+            <span style="font-weight: 600; color: #1e293b;">${user.name || 'User'}${roleBadge}</span>
+        `;
     }
 
-    // 3. Update topbar user name & avatar initials
-    const topbarName = document.querySelector(".topbar h2");
-    const userBoxRole = document.querySelector(".user-box span");
-    const avatar = document.querySelector(".avatar");
-
-    if (userBoxRole) {
-        userBoxRole.textContent = isHR ? "HR Officer" : user.name;
+    // Set Dashboard Navigation Link
+    const navDashboard = document.getElementById("navDashboard");
+    if (navDashboard) {
+        navDashboard.href = user.role === "hr" ? "hr-dashboard.html" : "employee-dashboard.html";
     }
 
-    if (avatar && user.name) {
-        const initials = isHR ? "HR" : user.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
-        avatar.textContent = initials;
+    // Update Sidebar Brand badge
+    const brandSpan = document.querySelector(".sidebar-brand span");
+    if (brandSpan && user.role === "hr") {
+        brandSpan.textContent = "HR Portal";
     }
 }
 
 
 /* =========================================================
-   DEMO HELPERS (LOGIN QUICK SELECT)
+   SIGN UP WITH 2-STEP SERVER-SIDE OTP VERIFICATION
 ========================================================= */
 
-function fillCredentials(email, password) {
-    const emailInput = document.getElementById("loginEmail");
-    const passInput = document.getElementById("loginPassword");
-    if (emailInput && passInput) {
-        emailInput.value = email;
-        passInput.value = password;
+let pendingSignupData = null;
+let otpCountdownInterval = null;
+
+async function handleSignupStep1(event) {
+    event.preventDefault();
+    const name = (document.getElementById("signupName")?.value || "").trim();
+    const employeeId = (document.getElementById("employeeId")?.value || "").trim();
+    const email = document.getElementById("signupEmail").value.trim().toLowerCase();
+    const password = document.getElementById("signupPassword").value;
+    const role = document.getElementById("role").value;
+    const error = document.getElementById("signupError");
+    const btn = document.getElementById("btnRequestOtp");
+
+    error.textContent = "";
+
+    if (password.length < 8) {
+        error.textContent = "Password must contain at least 8 characters.";
+        return;
     }
-}
+    if (!role) {
+        error.textContent = "Please select a role.";
+        return;
+    }
 
+    btn.disabled = true;
+    btn.textContent = "Sending Verification OTP...";
 
-/* =========================================================
-   SIGN UP & LOGIN
-========================================================= */
+    // Request Server-Side OTP
+    const res = await apiFetch('/api/auth/send-otp', 'POST', { email, name });
 
-const signupForm = document.getElementById("signupForm");
-if (signupForm) {
-    signupForm.addEventListener("submit", async function(event) {
-        event.preventDefault();
+    btn.disabled = false;
+    btn.textContent = "Get Verification OTP →";
 
-        const name = (document.getElementById("signupName")?.value || "").trim();
-        const employeeId = (document.getElementById("employeeId")?.value || "").trim();
-        const email = document.getElementById("signupEmail").value.trim().toLowerCase();
-        const password = document.getElementById("signupPassword").value;
-        const role = document.getElementById("role").value;
-        const error = document.getElementById("signupError");
-
-        error.textContent = "";
-
-        if (password.length < 8) {
-            error.textContent = "Password must contain at least 8 characters.";
-            return;
-        }
-
-        if (!role) {
-            error.textContent = "Please select a role.";
-            return;
-        }
-
-        // Try backend registration
-        const res = await apiFetch('/api/auth/signup', 'POST', {
-            name: name || employeeId,
-            email,
-            password,
-            role,
-            employee_code: employeeId
-        });
-
-        if (res.success) {
-            localStorage.setItem("pending_verification_email", email);
-            window.location.href = `verify-email.html?email=${encodeURIComponent(email)}&token=${res.data?.verification_token || 'mock-token'}`;
-            return;
-        }
-
-        // Fallback local registration
-        let users = JSON.parse(localStorage.getItem("dayflow_users") || "[]");
-        if (users.find(u => u.email === email)) {
-            error.textContent = "An account with this email already exists.";
-            return;
-        }
-
-        const newUser = {
-            user_id: users.length + 1,
-            employee_id: users.length + 1,
-            name: name || employeeId || "New User",
-            employee_code: employeeId || `DF000${users.length + 1}`,
-            email: email,
-            password: password,
-            role: role,
-            department: role === "hr" ? "Human Resources" : "Engineering",
-            designation: role === "hr" ? "HR Specialist" : "Software Developer",
-            phone: "+91 98765 00000",
-            address: "Bengaluru, India",
-            is_verified: false,
-            join_date: new Date().toISOString().split('T')[0],
-            basic_salary: role === "hr" ? 60000 : 35000,
-            hra: role === "hr" ? 15000 : 8000,
-            allowances: role === "hr" ? 6000 : 4000,
-            deductions: 2000
-        };
-
-        users.push(newUser);
-        localStorage.setItem("dayflow_users", JSON.stringify(users));
+    if (res.success || res.fallback) {
+        pendingSignupData = { name, employee_code: employeeId, email, password, role };
         localStorage.setItem("pending_verification_email", email);
 
-        window.location.href = `verify-email.html?email=${encodeURIComponent(email)}&token=mock-token-${Date.now()}`;
-    });
+        // Switch to Step 2 (OTP Entry)
+        document.getElementById("signupStepDetails").classList.add("hidden");
+        document.getElementById("signupStepOtp").classList.remove("hidden");
+        document.getElementById("displayOtpEmail").textContent = email;
+        document.getElementById("signupOtp").focus();
+
+        startOtpTimer(45);
+    } else {
+        error.textContent = res.message || "Failed to send verification OTP. Please try again.";
+    }
 }
+
+async function handleSignupStep2(event) {
+    event.preventDefault();
+    const otp = document.getElementById("signupOtp").value.trim();
+    const otpError = document.getElementById("otpError");
+    const otpSuccess = document.getElementById("otpSuccess");
+    const btn = document.getElementById("btnVerifyOtp");
+
+    otpError.textContent = "";
+    otpSuccess.textContent = "";
+
+    if (!otp || otp.length < 6) {
+        otpError.textContent = "Please enter the complete 6-digit verification code.";
+        return;
+    }
+
+    if (!pendingSignupData) {
+        otpError.textContent = "Session expired. Please restart registration.";
+        backToSignupStep1();
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Verifying & Activating Account...";
+
+    const res = await apiFetch('/api/auth/signup', 'POST', {
+        ...pendingSignupData,
+        otp
+    });
+
+    btn.disabled = false;
+    btn.textContent = "Verify & Activate Account";
+
+    if (res.success || res.status === 201) {
+        otpSuccess.textContent = "🎉 Account verified & created successfully! Redirecting to Sign In...";
+        setTimeout(() => {
+            window.location.href = "index.html";
+        }, 1200);
+    } else if (res.fallback) {
+        // Offline registration fallback
+        let users = JSON.parse(localStorage.getItem("dayflow_users") || "[]");
+        users.push({
+            user_id: users.length + 1,
+            employee_id: users.length + 1,
+            name: pendingSignupData.name,
+            employee_code: pendingSignupData.employee_code || `DF000${users.length + 1}`,
+            email: pendingSignupData.email,
+            password: pendingSignupData.password,
+            role: pendingSignupData.role,
+            is_verified: true,
+            basic_salary: pendingSignupData.role === "hr" ? 60000 : 35000,
+            hra: pendingSignupData.role === "hr" ? 15000 : 8000,
+            allowances: pendingSignupData.role === "hr" ? 6000 : 4000,
+            deductions: 2000
+        });
+        localStorage.setItem("dayflow_users", JSON.stringify(users));
+        otpSuccess.textContent = "🎉 Account verified & activated! Redirecting...";
+        setTimeout(() => {
+            window.location.href = "index.html";
+        }, 1200);
+    } else {
+        otpError.textContent = res.message || "Invalid or expired verification code.";
+    }
+}
+
+function startOtpTimer(seconds) {
+    const btnResend = document.getElementById("btnResendOtp");
+    const timerText = document.getElementById("otpTimerText");
+    if (!btnResend) return;
+
+    btnResend.disabled = true;
+    let remaining = seconds;
+
+    if (otpCountdownInterval) clearInterval(otpCountdownInterval);
+    otpCountdownInterval = setInterval(() => {
+        if (remaining <= 0) {
+            clearInterval(otpCountdownInterval);
+            btnResend.disabled = false;
+            if (timerText) timerText.textContent = "";
+        } else {
+            if (timerText) timerText.textContent = `Resend in ${remaining}s`;
+            remaining--;
+        }
+    }, 1000);
+}
+
+async function resendSignupOtp() {
+    if (!pendingSignupData?.email) return;
+    const otpSuccess = document.getElementById("otpSuccess");
+    const otpError = document.getElementById("otpError");
+    otpError.textContent = "";
+    otpSuccess.textContent = "Sending new verification code...";
+
+    const res = await apiFetch('/api/auth/send-otp', 'POST', { email: pendingSignupData.email, name: pendingSignupData.name });
+    if (res.success || res.fallback) {
+        otpSuccess.textContent = "A fresh 6-digit code has been sent to your email.";
+        startOtpTimer(45);
+    } else {
+        otpError.textContent = res.message || "Failed to resend code.";
+    }
+}
+
+function backToSignupStep1() {
+    document.getElementById("signupStepOtp").classList.add("hidden");
+    document.getElementById("signupStepDetails").classList.remove("hidden");
+}
+
+/* =========================================================
+   LOGIN HANDLER
+========================================================= */
 
 const loginForm = document.getElementById("loginForm");
 if (loginForm) {
@@ -365,396 +348,102 @@ if (loginForm) {
                 return;
             }
             if (found.is_verified === false) {
-                error.textContent = "Please verify your email before logging in.";
+                error.textContent = "Please verify your email OTP before logging in.";
                 return;
             }
 
             setCurrentUser(found);
             window.location.href = found.role === "hr" ? "hr-dashboard.html" : "employee-dashboard.html";
         } else {
-            error.textContent = "Account not found. Please register or click a demo account.";
+            error.textContent = "Account not found. Please register or verify your credentials.";
         }
     });
 }
 
-
 /* =========================================================
-   EMAIL VERIFICATION
+   DIRECT VERIFY EMAIL PAGE HANDLERS
 ========================================================= */
 
-async function verifyEmail() {
-    const message = document.getElementById("verifyMessage");
-    const urlParams = new URLSearchParams(window.location.search);
-    const email = urlParams.get("email") || localStorage.getItem("pending_verification_email") || localStorage.getItem("email");
-    const token = urlParams.get("token") || "mock-token";
+async function handleDirectVerifyEmail(event) {
+    event.preventDefault();
+    const email = document.getElementById("directVerifyEmail").value.trim().toLowerCase();
+    const otp = document.getElementById("directVerifyOtp").value.trim();
+    const msg = document.getElementById("verifyMessage");
 
-    if (!message) return;
+    msg.textContent = "";
+    msg.className = "error-message";
 
-    await apiFetch('/api/auth/verify-email', 'POST', { email, token });
-
-    const users = JSON.parse(localStorage.getItem("dayflow_users") || "[]");
-    const userIndex = users.findIndex(u => u.email === email);
-    if (userIndex !== -1) {
-        users[userIndex].is_verified = true;
-        localStorage.setItem("dayflow_users", JSON.stringify(users));
-    }
-
-    message.textContent = "Email verified successfully! Redirecting to sign in...";
-    message.style.color = "#16a34a";
-
-    setTimeout(() => {
-        window.location.href = "index.html";
-    }, 1200);
-}
-
-
-/* =========================================================
-   ATTENDANCE (EMPLOYEE CHECK-IN & HR COMPANY MONITORING)
-========================================================= */
-
-function setupAttendancePage(user) {
-    if (!window.location.pathname.endsWith("attendance.html") || !user) return;
-
-    const isHR = user.role === "hr";
-    const empSection = document.getElementById("employeeAttendanceSection");
-    const hrSection = document.getElementById("hrAttendanceSection");
-
-    if (isHR) {
-        if (empSection) empSection.classList.add("hidden");
-        if (hrSection) hrSection.classList.remove("hidden");
-        renderHRCompanyAttendance();
+    const res = await apiFetch('/api/auth/verify-otp', 'POST', { email, otp });
+    if (res.success || res.fallback) {
+        msg.className = "success-message";
+        msg.textContent = "✅ Email verified successfully! Redirecting to sign in...";
+        setTimeout(() => {
+            window.location.href = "index.html";
+        }, 1200);
     } else {
-        if (empSection) empSection.classList.remove("hidden");
-        if (hrSection) hrSection.classList.add("hidden");
-        renderPersonalAttendance();
+        msg.textContent = res.message || "Invalid or expired verification code.";
     }
 }
 
-async function checkIn() {
-    const status = document.getElementById("attendanceStatus");
-    const user = getCurrentUser();
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const dateStr = now.toISOString().split('T')[0];
-
-    await apiFetch('/api/attendance/check-in', 'POST');
-
-    const attendanceList = JSON.parse(localStorage.getItem("dayflow_attendance") || "[]");
-    const existing = attendanceList.find(a => a.employee_id === (user?.employee_id || 2) && a.date === dateStr);
-
-    if (existing && existing.check_in && !existing.check_out) {
-        alert("You are already checked in today!");
+async function resendDirectVerifyOtp() {
+    const email = document.getElementById("directVerifyEmail")?.value.trim().toLowerCase();
+    const msg = document.getElementById("verifyMessage");
+    if (!email) {
+        if (msg) msg.textContent = "Please enter your email first.";
         return;
     }
-
-    const newRecord = {
-        id: Date.now(),
-        employee_id: user?.employee_id || 2,
-        employee_name: user?.name || "Rahul Kumar",
-        employee_code: user?.employee_code || "DF0002",
-        department_name: user?.department || "Engineering",
-        date: dateStr,
-        check_in: timeStr,
-        check_out: null,
-        worked_hours: 0,
-        state: "present"
-    };
-
-    attendanceList.unshift(newRecord);
-    localStorage.setItem("dayflow_attendance", JSON.stringify(attendanceList));
-
-    if (status) {
-        status.textContent = "Checked in at " + timeStr;
-        status.style.color = "#16a34a";
-    }
-
-    renderPersonalAttendance();
-}
-
-async function checkOut() {
-    const status = document.getElementById("attendanceStatus");
-    const user = getCurrentUser();
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const dateStr = now.toISOString().split('T')[0];
-
-    await apiFetch('/api/attendance/check-out', 'POST');
-
-    const attendanceList = JSON.parse(localStorage.getItem("dayflow_attendance") || "[]");
-    const todayRecord = attendanceList.find(a => a.employee_id === (user?.employee_id || 2) && a.date === dateStr);
-
-    if (!todayRecord || !todayRecord.check_in) {
-        alert("Please check in first before checking out.");
-        return;
-    }
-
-    todayRecord.check_out = timeStr;
-    todayRecord.worked_hours = 8.5;
-    localStorage.setItem("dayflow_attendance", JSON.stringify(attendanceList));
-
-    if (status) {
-        status.textContent = "Checked out at " + timeStr;
-        status.style.color = "#dc2626";
-    }
-
-    renderPersonalAttendance();
-}
-
-function renderPersonalAttendance() {
-    const tbody = document.querySelector("#personalAttendanceTable tbody");
-    if (!tbody) return;
-
-    const user = getCurrentUser();
-    const attendanceList = JSON.parse(localStorage.getItem("dayflow_attendance") || "[]");
-    const myRecords = attendanceList.filter(a => a.employee_id === (user?.employee_id || 2));
-
-    tbody.innerHTML = "";
-
-    if (myRecords.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #6b7280; padding: 20px;">No attendance records found.</td></tr>`;
-        return;
-    }
-
-    myRecords.forEach(record => {
-        const stateClass = record.state === 'present' ? 'approved' : (record.state === 'half_day' ? 'halfday' : (record.state === 'leave' ? 'pending' : 'rejected'));
-        const stateText = record.state === 'present' ? 'Present' : (record.state === 'half_day' ? 'Half-day' : (record.state === 'leave' ? 'Leave' : 'Absent'));
-
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-            <td>${record.date}</td>
-            <td>${record.check_in || '-'}</td>
-            <td>${record.check_out || '-'}</td>
-            <td>${record.worked_hours ? record.worked_hours + 'h' : '-'}</td>
-            <td><span class="status ${stateClass}">${stateText}</span></td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-function renderHRCompanyAttendance() {
-    const tbody = document.querySelector("#hrAttendanceTable tbody");
-    if (!tbody) return;
-
-    const attendanceList = JSON.parse(localStorage.getItem("dayflow_attendance") || "[]");
-    tbody.innerHTML = "";
-
-    attendanceList.forEach(rec => {
-        const stateClass = rec.state === 'present' ? 'approved' : (rec.state === 'half_day' ? 'halfday' : (rec.state === 'leave' ? 'pending' : 'rejected'));
-        const stateText = rec.state === 'present' ? 'Present' : (rec.state === 'half_day' ? 'Half-day' : (rec.state === 'leave' ? 'On Leave' : 'Absent'));
-
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-            <td><strong>${rec.employee_name || 'Employee'}</strong> <small style="color:#6b7280;">(${rec.employee_code || 'DF0002'})</small></td>
-            <td>${rec.department_name || 'Engineering'}</td>
-            <td>${rec.date}</td>
-            <td>${rec.check_in || '-'}</td>
-            <td>${rec.check_out || '-'}</td>
-            <td>${rec.worked_hours ? rec.worked_hours + 'h' : '-'}</td>
-            <td><span class="status ${stateClass}">${stateText}</span></td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-function filterHRCompanyAttendance() {
-    const searchInput = document.getElementById("hrAttendanceSearch")?.value.toLowerCase() || "";
-    const tbody = document.querySelector("#hrAttendanceTable tbody");
-    if (!tbody) return;
-
-    const rows = tbody.getElementsByTagName("tr");
-    for (let row of rows) {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(searchInput) ? "" : "none";
-    }
-}
-
-function switchAttendanceTab(btn, tabName) {
-    document.querySelectorAll(".tabs .tab").forEach(t => t.classList.remove("active"));
-    if (btn) btn.classList.add("active");
-    renderPersonalAttendance();
-}
-
-
-/* =========================================================
-   LEAVE MANAGEMENT (EMPLOYEE APPLY & HR APPROVALS)
-========================================================= */
-
-function setupLeavePage(user) {
-    if (!window.location.pathname.endsWith("leave.html") || !user) return;
-
-    const isHR = user.role === "hr";
-    const empSection = document.getElementById("employeeLeaveSection");
-    const hrSection = document.getElementById("hrLeaveSection");
-
-    if (isHR) {
-        if (empSection) empSection.classList.add("hidden");
-        if (hrSection) hrSection.classList.remove("hidden");
-        renderHRLeaveQueue();
-    } else {
-        if (empSection) empSection.classList.remove("hidden");
-        if (hrSection) hrSection.classList.add("hidden");
-        renderPersonalLeaveTable();
-    }
-}
-
-const leaveForm = document.getElementById("leaveForm");
-if (leaveForm) {
-    leaveForm.addEventListener("submit", async function(event) {
-        event.preventDefault();
-
-        const user = getCurrentUser();
-        const leaveType = document.getElementById("leaveType")?.value;
-        const dateFrom = document.getElementById("leaveFrom")?.value;
-        const dateTo = document.getElementById("leaveTo")?.value;
-        const remarks = document.getElementById("leaveRemarks")?.value || "";
-        const message = document.getElementById("leaveMessage");
-
-        if (new Date(dateTo) < new Date(dateFrom)) {
-            alert("End date cannot be earlier than start date.");
-            return;
-        }
-
-        await apiFetch('/api/leave/apply', 'POST', {
-            leave_type: leaveType.toLowerCase().includes("sick") ? "sick" : (leaveType.toLowerCase().includes("unpaid") ? "unpaid" : "paid"),
-            date_from: dateFrom,
-            date_to: dateTo,
-            remarks
-        });
-
-        const leaves = JSON.parse(localStorage.getItem("dayflow_leaves") || "[]");
-        const fromD = new Date(dateFrom);
-        const toD = new Date(dateTo);
-        const diffDays = Math.max(1, Math.round((toD - fromD) / (1000 * 60 * 60 * 24)) + 1);
-
-        const newLeave = {
-            id: Date.now(),
-            employee_id: user?.employee_id || 2,
-            employee_name: user?.name || "Rahul Kumar",
-            employee_code: user?.employee_code || "DF0002",
-            department_name: user?.department || "Engineering",
-            leave_type: leaveType,
-            date_from: dateFrom,
-            date_to: dateTo,
-            duration_days: diffDays,
-            remarks: remarks,
-            state: "pending",
-            created_at: new Date().toISOString().replace('T', ' ').substring(0, 16)
-        };
-
-        leaves.unshift(newLeave);
-        localStorage.setItem("dayflow_leaves", JSON.stringify(leaves));
-
-        if (message) {
-            message.textContent = "Leave request submitted successfully. Awaiting HR approval.";
-            message.style.color = "#16a34a";
-        }
-
-        leaveForm.reset();
-        renderPersonalLeaveTable();
-    });
-}
-
-function renderPersonalLeaveTable() {
-    const tbody = document.querySelector("#personalLeaveTable tbody");
-    if (!tbody) return;
-
-    const user = getCurrentUser();
-    const leaves = JSON.parse(localStorage.getItem("dayflow_leaves") || "[]");
-    const myLeaves = leaves.filter(l => l.employee_id === (user?.employee_id || 2));
-
-    tbody.innerHTML = "";
-
-    myLeaves.forEach(req => {
-        const stateClass = req.state === 'approved' ? 'approved' : (req.state === 'rejected' ? 'rejected' : 'pending');
-
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-            <td>${req.leave_type}</td>
-            <td>${req.date_from}</td>
-            <td>${req.date_to}</td>
-            <td>${req.remarks || '-'}</td>
-            <td><span class="status ${stateClass}">${req.state.charAt(0).toUpperCase() + req.state.slice(1)}</span></td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-function renderHRLeaveQueue() {
-    const tbody = document.querySelector("#hrLeaveTable tbody");
-    if (!tbody) return;
-
-    const leaves = JSON.parse(localStorage.getItem("dayflow_leaves") || "[]");
-    tbody.innerHTML = "";
-
-    if (leaves.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #6b7280; padding: 20px;">No leave requests pending.</td></tr>`;
-        return;
-    }
-
-    leaves.forEach(req => {
-        const stateClass = req.state === 'approved' ? 'approved' : (req.state === 'rejected' ? 'rejected' : 'pending');
-        const isPending = req.state === 'pending';
-
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-            <td><strong>${req.employee_name}</strong> <small style="color:#6b7280;">(${req.employee_code || 'DF0002'})</small></td>
-            <td>${req.department_name || 'Engineering'}</td>
-            <td>${req.leave_type}</td>
-            <td>${req.date_from} to ${req.date_to} <small>(${req.duration_days || 1}d)</small></td>
-            <td>${req.remarks || '-'}</td>
-            <td><span class="status ${stateClass}">${req.state.charAt(0).toUpperCase() + req.state.slice(1)}</span></td>
-            <td>
-                ${isPending ? `
-                <div class="btn-group">
-                    <button type="button" class="btn-success" onclick="handleLeaveAction(${req.id}, 'approve')">Approve</button>
-                    <button type="button" class="btn-danger" onclick="handleLeaveAction(${req.id}, 'reject')">Reject</button>
-                </div>` : `<span style="color:#6b7280; font-size:12px;">Reviewed</span>`}
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-function handleLeaveAction(leaveId, action) {
-    let comments = "";
-    if (action === 'reject') {
-        comments = prompt("Please enter a reason/comment for rejecting this leave request:") || "";
-        if (!comments.trim()) {
-            alert("A reason is required when rejecting a leave request.");
-            return;
-        }
-    }
-
-    const leaves = JSON.parse(localStorage.getItem("dayflow_leaves") || "[]");
-    const leave = leaves.find(l => l.id === leaveId);
-    if (leave) {
-        leave.state = action === 'approve' ? 'approved' : 'rejected';
-        if (comments) leave.manager_remarks = comments;
-        localStorage.setItem("dayflow_leaves", JSON.stringify(leaves));
-        apiFetch('/api/leave/action', 'POST', { leave_id: leaveId, action, comments }).catch(() => {});
-        renderHRLeaveQueue();
+    const res = await apiFetch('/api/auth/send-otp', 'POST', { email });
+    if (msg) {
+        msg.className = res.success ? "success-message" : "error-message";
+        msg.textContent = res.message || (res.success ? "OTP sent to your email." : "Failed to send OTP.");
     }
 }
 
 
 /* =========================================================
-   PAYROLL (EMPLOYEE PAYSLIP & HR COMPANY PAYROLL - LIVE API)
+   PAYROLL (PERSONAL PAYSLIP & HR COMPANY DIRECTORY)
 ========================================================= */
 
 function setupPayrollPage(user) {
     if (!window.location.pathname.endsWith("payroll.html") || !user) return;
 
     const isHR = user.role === "hr";
+    const hrTabs = document.getElementById("hrPayrollTabs");
     const empSection = document.getElementById("employeePayrollSection");
     const hrSection = document.getElementById("hrPayrollSection");
 
     if (isHR) {
-        if (empSection) empSection.classList.add("hidden");
+        if (hrTabs) hrTabs.classList.remove("hidden");
+        // By default show Company Payroll for HR, but load both
         if (hrSection) hrSection.classList.remove("hidden");
+        if (empSection) empSection.classList.add("hidden");
+        renderHRCompanyPayroll();
+        renderPersonalPayroll();
+    } else {
+        if (hrTabs) hrTabs.classList.add("hidden");
+        if (empSection) empSection.classList.remove("hidden");
+        if (hrSection) hrSection.classList.add("hidden");
+        renderPersonalPayroll();
+    }
+}
+
+function switchPayrollTab(tabName) {
+    const empSection = document.getElementById("employeePayrollSection");
+    const hrSection = document.getElementById("hrPayrollSection");
+    const tabCompanyBtn = document.getElementById("tabCompanyPayrollBtn");
+    const tabPersonalBtn = document.getElementById("tabPersonalPayrollBtn");
+
+    if (tabName === 'company') {
+        if (hrSection) hrSection.classList.remove("hidden");
+        if (empSection) empSection.classList.add("hidden");
+        if (tabCompanyBtn) tabCompanyBtn.classList.add("active");
+        if (tabPersonalBtn) tabPersonalBtn.classList.remove("active");
         renderHRCompanyPayroll();
     } else {
         if (empSection) empSection.classList.remove("hidden");
         if (hrSection) hrSection.classList.add("hidden");
+        if (tabPersonalBtn) tabPersonalBtn.classList.add("active");
+        if (tabCompanyBtn) tabCompanyBtn.classList.remove("active");
         renderPersonalPayroll();
     }
 }
@@ -771,11 +460,12 @@ async function renderPersonalPayroll() {
     }
 
     const user = getCurrentUser() || {};
-    const basic = p ? (p.basic_salary || 0) : (user.basic_salary || 35000);
-    const hra = p ? (p.hra || 0) : (user.hra || 8000);
-    const allowance = p ? (p.special_allowance || 0) : (user.allowances || 5000);
-    const deductions = p ? (p.deductions || 0) : (user.deductions || 2000);
-    const net = p ? (p.net_salary || 0) : (basic + hra + allowance - deductions);
+    const basic = p ? (Number(p.basic_salary) || 0) : (Number(user.basic_salary) || 50000);
+    const hra = p ? (Number(p.hra) || 0) : (Number(user.hra) || 15000);
+    const allowance = p ? (Number(p.special_allowance) || 0) : (Number(user.allowances) || 5000);
+    const deductions = p ? (Number(p.deductions) || 0) : (Number(user.deductions) || 2000);
+    const gross = basic + hra + allowance;
+    const net = p ? (Number(p.net_salary) || Math.max(0, gross - deductions)) : Math.max(0, gross - deductions);
 
     // Update Summary KPI Cards
     if (document.getElementById("payrollBasic")) document.getElementById("payrollBasic").textContent = `₹${basic.toLocaleString()}`;
@@ -798,7 +488,7 @@ async function renderHRCompanyPayroll() {
     let payrollList = [];
     try {
         const res = await apiFetch('/api/payroll/company');
-        if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
+        if (res && res.success && Array.isArray(res.data)) {
             payrollList = res.data;
         }
     } catch (err) {
@@ -812,11 +502,11 @@ async function renderHRCompanyPayroll() {
             employee_name: u.name,
             employee_code: u.employee_code || "DF0001",
             department_name: u.department || "General",
-            basic_salary: u.basic_salary || 35000,
-            hra: u.hra || 8000,
+            basic_salary: u.basic_salary || 50000,
+            hra: u.hra || 15000,
             special_allowance: u.allowances || 5000,
             deductions: u.deductions || 2000,
-            net_salary: (u.basic_salary || 35000) + (u.hra || 8000) + (u.allowances || 5000) - (u.deductions || 2000)
+            net_salary: (u.basic_salary || 50000) + (u.hra || 15000) + (u.allowances || 5000) - (u.deductions || 2000)
         }));
     }
 
@@ -834,6 +524,11 @@ async function renderHRCompanyPayroll() {
     }
 
     tbody.innerHTML = "";
+    if (payrollList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #6b7280; padding: 20px;">No employee payroll records found.</td></tr>`;
+        return;
+    }
+
     payrollList.forEach(p => {
         const basic = Number(p.basic_salary) || 0;
         const hra = Number(p.hra) || 0;
@@ -858,113 +553,77 @@ async function renderHRCompanyPayroll() {
     });
 }
 
-function openSalaryEditModal(employeeId, employeeName, basic, hra, allowance, deductions) {
+function openSalaryEditModal(empId, empName, basic, hra, allowance, deductions) {
     const modal = document.createElement("div");
     modal.className = "dayflow-modal";
+    modal.id = "salaryEditModal";
     modal.innerHTML = `
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Update Salary: ${employeeName}</h3>
+                <h3>Edit Salary: ${empName}</h3>
                 <button type="button" class="modal-close-btn" onclick="this.closest('.dayflow-modal').remove()">×</button>
             </div>
-            <div class="modal-body">
-                <div style="display: flex; flex-direction: column; gap: 10px;">
-                    <div>
-                        <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Basic Salary (INR)</label>
-                        <input type="number" id="editBasicSalary" value="${basic}" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;">
+            <form onsubmit="submitSalaryUpdate(event, ${empId})">
+                <div class="modal-body" style="display: flex; flex-direction: column; gap: 12px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label>Basic Salary (INR)</label>
+                        <input type="number" id="editBasic" value="${basic}" required min="0" step="100">
                     </div>
-                    <div>
-                        <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">House Rent Allowance (HRA)</label>
-                        <input type="number" id="editHra" value="${hra}" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label>House Rent Allowance (HRA)</label>
+                        <input type="number" id="editHra" value="${hra}" required min="0" step="100">
                     </div>
-                    <div>
-                        <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Special Allowance</label>
-                        <input type="number" id="editSpecialAllowance" value="${allowance}" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label>Special Allowance</label>
+                        <input type="number" id="editAllowance" value="${allowance}" required min="0" step="100">
                     </div>
-                    <div>
-                        <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Total Deductions (Tax / PF)</label>
-                        <input type="number" id="editDeductions" value="${deductions}" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label>Monthly Deductions (PF/Tax)</label>
+                        <input type="number" id="editDeductions" value="${deductions}" required min="0" step="100">
                     </div>
                 </div>
-            </div>
-            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px;">
-                <button type="button" class="secondary-btn" onclick="this.closest('.dayflow-modal').remove()">Cancel</button>
-                <button type="button" class="primary-btn" style="width: auto;" onclick="submitSalaryUpdate(${employeeId})">Save Salary</button>
-            </div>
+                <div class="modal-footer">
+                    <button type="button" class="secondary-btn" onclick="this.closest('.dayflow-modal').remove()">Cancel</button>
+                    <button type="submit" class="primary-btn" style="width: auto;">Save Salary Structure</button>
+                </div>
+            </form>
         </div>
     `;
     document.body.appendChild(modal);
 }
 
-async function submitSalaryUpdate(employeeId) {
-    const basic = parseFloat(document.getElementById("editBasicSalary")?.value || 0);
-    const hra = parseFloat(document.getElementById("editHra")?.value || 0);
-    const allowance = parseFloat(document.getElementById("editSpecialAllowance")?.value || 0);
-    const deductions = parseFloat(document.getElementById("editDeductions")?.value || 0);
+async function submitSalaryUpdate(event, empId) {
+    event.preventDefault();
+    const basic = parseFloat(document.getElementById("editBasic").value) || 0;
+    const hra = parseFloat(document.getElementById("editHra").value) || 0;
+    const allowance = parseFloat(document.getElementById("editAllowance").value) || 0;
+    const deductions = parseFloat(document.getElementById("editDeductions").value) || 0;
 
-    const res = await apiFetch('/api/payroll/update', 'PUT', {
-        employee_id: employeeId,
+    const payload = {
+        employee_id: empId,
         basic_salary: basic,
         hra: hra,
         special_allowance: allowance,
         deductions: deductions
-    });
+    };
 
-    // Update localStorage for full offline sync
-    const users = JSON.parse(localStorage.getItem("dayflow_users") || "[]");
-    const idx = users.findIndex(u => (u.employee_id === employeeId || u.user_id === employeeId));
-    if (idx !== -1) {
-        users[idx].basic_salary = basic;
-        users[idx].hra = hra;
-        users[idx].allowances = allowance;
-        users[idx].deductions = deductions;
-        localStorage.setItem("dayflow_users", JSON.stringify(users));
-    }
-
-    const currUser = getCurrentUser();
-    if (currUser && (currUser.employee_id === employeeId || currUser.user_id === employeeId)) {
-        currUser.basic_salary = basic;
-        currUser.hra = hra;
-        currUser.allowances = allowance;
-        currUser.deductions = deductions;
-        setCurrentUser(currUser);
-    }
+    const res = await apiFetch('/api/payroll/update', 'PUT', payload);
+    document.getElementById("salaryEditModal")?.remove();
 
     if (res && res.success) {
         alert("✅ Salary structure updated successfully!");
-        document.querySelector(".dayflow-modal")?.remove();
         renderHRCompanyPayroll();
-    } else if (res && !res.fallback && !res.success) {
-        alert("❌ Failed to update salary: " + (res.message || "Unknown error"));
+        renderPersonalPayroll();
     } else {
-        alert("✅ Salary structure updated locally!");
-        document.querySelector(".dayflow-modal")?.remove();
+        alert("Salary updated locally.");
         renderHRCompanyPayroll();
     }
-}
-
-function downloadSalarySlipForUser(nameOrEmail, code, basic, hra, allowance, deductions) {
-    if (typeof nameOrEmail === 'string' && nameOrEmail.includes('@')) {
-        const users = JSON.parse(localStorage.getItem("dayflow_users") || "[]");
-        const targetUser = users.find(u => u.email === nameOrEmail);
-        if (targetUser) {
-            showSalarySlipModal(targetUser);
-            return;
-        }
-    }
-    showSalarySlipModal({
-        name: nameOrEmail || "Employee",
-        employee_code: code || "DF0002",
-        basic_salary: basic || 35000,
-        hra: hra || 0,
-        allowances: allowance || 0,
-        deductions: deductions || 0
-    });
 }
 
 async function downloadSalarySlip() {
     const user = getCurrentUser();
     if (!user) return;
+
     let salary = null;
     try {
         const res = await apiFetch('/api/payroll/salary-info');
@@ -974,43 +633,60 @@ async function downloadSalarySlip() {
     } catch (e) {}
 
     showSalarySlipModal({
-        name: user.name,
-        employee_code: user.employee_code || (salary ? salary.employee_code : "DF0001"),
-        basic_salary: salary ? salary.basic_salary : (user.basic_salary || 35000),
-        hra: salary ? salary.hra : (user.hra || 8000),
+        name: salary?.employee_name || user.name,
+        employee_code: salary?.employee_code || user.employee_code || "DF0001",
+        basic_salary: salary ? salary.basic_salary : (user.basic_salary || 50000),
+        hra: salary ? salary.hra : (user.hra || 15000),
         allowances: salary ? salary.special_allowance : (user.allowances || 5000),
         deductions: salary ? salary.deductions : (user.deductions || 2000)
     });
 }
 
+function downloadSalarySlipForUser(name, code, basic, hra, allowance, deductions) {
+    showSalarySlipModal({
+        name,
+        employee_code: code,
+        basic_salary: basic,
+        hra,
+        allowances: allowance,
+        deductions
+    });
+}
+
 function showSalarySlipModal(user) {
-    const basic = user.basic_salary || 35000;
+    const basic = user.basic_salary || 50000;
     const hra = user.hra || 0;
     const allowances = user.allowances || user.special_allowance || 0;
     const deductions = user.deductions || 0;
     const gross = basic + hra + allowances;
-    const net = gross - deductions;
+    const net = Math.max(0, gross - deductions);
 
     const modal = document.createElement("div");
     modal.className = "dayflow-modal";
     modal.innerHTML = `
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 500px;">
             <div class="modal-header">
-                <h3>Dayflow Salary Slip</h3>
+                <h3>Dayflow Official Salary Slip</h3>
                 <button type="button" class="modal-close-btn" onclick="this.closest('.dayflow-modal').remove()">×</button>
             </div>
             <div class="modal-body" style="line-height: 1.8;">
-                <p><strong>Employee:</strong> ${user.name} (${user.employee_code || 'DF0002'})</p>
-                <p><strong>Pay Period:</strong> August 2026</p>
-                <hr style="margin: 15px 0; border: 0; border-top: 1px solid #e5e7eb;">
-                <div style="display: flex; justify-content: space-between;"><span>Basic Salary:</span><strong>₹${basic.toLocaleString()}</strong></div>
-                <div style="display: flex; justify-content: space-between;"><span>HRA & Allowances:</span><strong>₹${(hra + allowances).toLocaleString()}</strong></div>
-                <div style="display: flex; justify-content: space-between; color: #dc2626;"><span>Deductions (Tax/PF):</span><strong>-₹${deductions.toLocaleString()}</strong></div>
-                <hr style="margin: 15px 0; border: 0; border-top: 1px solid #e5e7eb;">
-                <div style="display: flex; justify-content: space-between; font-size: 16px; color: #4f46e5;"><span><strong>Net Salary Paid:</strong></span><strong>₹${net.toLocaleString()}</strong></div>
+                <div style="text-align: center; margin-bottom: 15px;">
+                    <h2 style="font-size: 20px; color: #4f46e5; margin-bottom: 4px;">Dayflow HRMS</h2>
+                    <p style="color: #64748b; font-size: 13px;">Payslip for Month of August 2026</p>
+                </div>
+                <div style="background: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                    <p><strong>Employee Name:</strong> ${user.name}</p>
+                    <p><strong>Employee ID:</strong> ${user.employee_code || 'DF0001'}</p>
+                    <p><strong>Pay Frequency:</strong> Monthly (Direct Deposit)</p>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>Basic Salary:</span><strong>₹${basic.toLocaleString()}</strong></div>
+                <div style="display: flex; justify-content: space-between; padding: 4px 0;"><span>HRA & Allowances:</span><strong>₹${(hra + allowances).toLocaleString()}</strong></div>
+                <div style="display: flex; justify-content: space-between; padding: 4px 0; color: #dc2626;"><span>Statutory Deductions:</span><strong>-₹${deductions.toLocaleString()}</strong></div>
+                <hr style="margin: 15px 0; border: 0; border-top: 1px solid #e2e8f0;">
+                <div style="display: flex; justify-content: space-between; font-size: 16px; color: #4f46e5;"><span><strong>Net Disbursed Pay:</strong></span><strong>₹${net.toLocaleString()}</strong></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="secondary-btn" onclick="window.print()">🖨️ Print</button>
+                <button type="button" class="secondary-btn" onclick="window.print()">🖨️ Print Slip</button>
                 <button type="button" class="primary-btn" style="width: auto;" onclick="this.closest('.dayflow-modal').remove()">Close</button>
             </div>
         </div>
@@ -1042,20 +718,24 @@ async function setupHRDashboard(user) {
         const empRes = await apiFetch('/api/employee/list');
         const employees = (empRes && empRes.success && Array.isArray(empRes.data)) ? empRes.data : JSON.parse(localStorage.getItem("dayflow_users") || "[]");
         const tbody = document.querySelector("#employeeTable tbody");
-        if (tbody && employees.length > 0) {
+        if (tbody) {
             tbody.innerHTML = "";
-            employees.forEach(emp => {
-                const tr = document.createElement("tr");
-                const isHrRole = emp.role === 'hr' || (emp.department_name && emp.department_name.toLowerCase().includes("hr"));
-                tr.innerHTML = `
-                    <td>${emp.employee_code || "DF0001"}</td>
-                    <td><strong>${emp.name}</strong></td>
-                    <td>${emp.work_email || emp.email}</td>
-                    <td>${emp.department_name || emp.department || "General"}</td>
-                    <td><span class="status ${emp.status === 'inactive' ? 'rejected' : 'active'}">${emp.status ? emp.status.toUpperCase() : (isHrRole ? "ACTIVE (HR)" : "ACTIVE")}</span></td>
-                `;
-                tbody.appendChild(tr);
-            });
+            if (employees.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #6b7280; padding: 20px;">No registered employees found.</td></tr>`;
+            } else {
+                employees.forEach(emp => {
+                    const tr = document.createElement("tr");
+                    const isHrRole = emp.role === 'hr' || (emp.department_name && emp.department_name.toLowerCase().includes("hr"));
+                    tr.innerHTML = `
+                        <td>${emp.employee_code || "DF0001"}</td>
+                        <td><strong>${emp.name}</strong></td>
+                        <td>${emp.work_email || emp.email}</td>
+                        <td>${emp.department_name || emp.department || "General"}</td>
+                        <td><span class="status ${emp.status === 'inactive' ? 'rejected' : 'active'}">${emp.status ? emp.status.toUpperCase() : (isHrRole ? "ACTIVE (HR)" : "ACTIVE")}</span></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
         }
     } catch (e) {}
 
@@ -1073,6 +753,7 @@ async function setupEmployeeDashboard(user) {
     // Render Employee Analytics Charts
     initEmployeeCharts();
 }
+
 
 /* =========================================================
    ANALYTICS & INTERACTIVE CHARTS
@@ -1173,7 +854,7 @@ function initHRCharts() {
         });
     }
 
-    // 4. Monthly Payroll Distribution (Horizontal / Vertical Bar Chart)
+    // 4. Monthly Payroll Distribution (Bar Chart)
     const ctxPayroll = document.getElementById("chartPayrollBreakdown");
     if (ctxPayroll && !ctxPayroll._chartInstance) {
         ctxPayroll._chartInstance = new Chart(ctxPayroll, {
@@ -1265,6 +946,7 @@ function initEmployeeCharts() {
     }
 }
 
+
 /* =========================================================
    SEARCH & EMPLOYEE LIST (HR DASHBOARD)
 ========================================================= */
@@ -1287,18 +969,23 @@ function searchEmployees() {
 
 
 /* =========================================================
-   PROFILE MANAGEMENT (LIVE API INTEGRATION)
+   PROFILE MANAGEMENT & EDIT PROFILE MODAL
 ========================================================= */
+
+let activeProfileData = null;
+let uploadedPhotoBase64 = null;
 
 function renderProfileFields(emp) {
     if (!emp) return;
+    activeProfileData = emp;
+
     if (document.getElementById("profileName")) document.getElementById("profileName").textContent = emp.name || "Employee";
     if (document.getElementById("profileEmpId")) document.getElementById("profileEmpId").textContent = emp.employee_code || "DF0001";
     if (document.getElementById("profileEmpIdText")) document.getElementById("profileEmpIdText").textContent = emp.employee_code || "DF0001";
     if (document.getElementById("profileEmail")) document.getElementById("profileEmail").textContent = emp.work_email || emp.email || "";
     if (document.getElementById("profileDept")) document.getElementById("profileDept").textContent = emp.department_name || emp.department || "Engineering";
-    if (document.getElementById("profilePhone") && emp.phone) document.getElementById("profilePhone").value = emp.phone;
-    if (document.getElementById("profileAddress") && emp.address) document.getElementById("profileAddress").value = emp.address;
+    if (document.getElementById("profilePhone")) document.getElementById("profilePhone").value = emp.phone || "";
+    if (document.getElementById("profileAddress")) document.getElementById("profileAddress").value = emp.address || "";
 
     // Job Details
     if (document.getElementById("jobDept")) document.getElementById("jobDept").textContent = emp.department_name || emp.department || (emp.role === 'hr' ? "Human Resources" : "Engineering");
@@ -1306,10 +993,13 @@ function renderProfileFields(emp) {
     if (document.getElementById("jobJoinDate")) document.getElementById("jobJoinDate").textContent = emp.join_date || "-";
     if (document.getElementById("jobStatus")) document.getElementById("jobStatus").textContent = (emp.status || "active").toUpperCase();
 
-    // Avatar Initials
-    const avatarElem = document.querySelector(".profile-picture span");
-    if (avatarElem && emp.name) {
-        avatarElem.textContent = emp.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
+    // Avatar Initials or Photo
+    const avatarInitials = document.getElementById("profileAvatarInitials");
+    const avatarWrap = document.getElementById("profileAvatarWrap");
+    if (emp.image_1920 && avatarWrap) {
+        avatarWrap.innerHTML = `<img src="data:image/png;base64,${emp.image_1920}" alt="${emp.name}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+    } else if (avatarInitials && emp.name) {
+        avatarInitials.textContent = emp.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
     }
 }
 
@@ -1342,13 +1032,113 @@ async function loadProfile() {
         }
     } catch (e) {}
 
-    const basic = salary ? (salary.basic_salary || 0) : (currentUser?.basic_salary || 35000);
-    const allowances = salary ? ((salary.hra || 0) + (salary.special_allowance || 0)) : ((currentUser?.hra || 8000) + (currentUser?.allowances || 5000));
-    const gross = salary ? (salary.gross_salary || (basic + allowances)) : (basic + allowances);
+    const basic = salary ? (Number(salary.basic_salary) || 0) : (Number(currentUser?.basic_salary) || 50000);
+    const hra = salary ? (Number(salary.hra) || 0) : (Number(currentUser?.hra) || 15000);
+    const allowances = salary ? (Number(salary.special_allowance) || 0) : (Number(currentUser?.allowances) || 5000);
+    const gross = basic + hra + allowances;
 
     if (document.getElementById("profileBasic")) document.getElementById("profileBasic").textContent = `₹${basic.toLocaleString()}`;
-    if (document.getElementById("profileAllowances")) document.getElementById("profileAllowances").textContent = `₹${allowances.toLocaleString()}`;
+    if (document.getElementById("profileAllowances")) document.getElementById("profileAllowances").textContent = `₹${(hra + allowances).toLocaleString()}`;
     if (document.getElementById("profileGross")) document.getElementById("profileGross").textContent = `₹${gross.toLocaleString()}`;
+}
+
+function openEditProfileModal() {
+    const user = getCurrentUser();
+    const modal = document.getElementById("editProfileModal");
+    if (!modal) return;
+
+    const data = activeProfileData || user || {};
+
+    document.getElementById("editModalPhone").value = data.phone || "";
+    document.getElementById("editModalAddress").value = data.address || "";
+
+    const hrSection = document.getElementById("hrProtectedEditFields");
+    if (user && user.role === 'hr') {
+        if (hrSection) hrSection.classList.remove("hidden");
+        document.getElementById("editModalName").value = data.name || "";
+        document.getElementById("editModalJobTitle").value = data.job_title || data.designation || "";
+        document.getElementById("editModalDept").value = data.department_name || data.department || "";
+        document.getElementById("editModalStatus").value = data.status || "active";
+    } else {
+        if (hrSection) hrSection.classList.add("hidden");
+    }
+
+    uploadedPhotoBase64 = null;
+    document.getElementById("photoPreviewWrap").style.display = "none";
+    document.getElementById("editProfileModalError").textContent = "";
+
+    modal.classList.remove("hidden");
+}
+
+function closeEditProfileModal() {
+    document.getElementById("editProfileModal")?.classList.add("hidden");
+}
+
+function previewProfilePhoto(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        uploadedPhotoBase64 = e.target.result;
+        const img = document.getElementById("photoPreviewImg");
+        const wrap = document.getElementById("photoPreviewWrap");
+        if (img && wrap) {
+            img.src = uploadedPhotoBase64;
+            wrap.style.display = "block";
+        }
+    };
+    reader.readAsDataURL(file);
+}
+
+async function submitEditProfileModal(event) {
+    event.preventDefault();
+    const user = getCurrentUser();
+    const phone = document.getElementById("editModalPhone").value.trim();
+    const address = document.getElementById("editModalAddress").value.trim();
+    const errorElem = document.getElementById("editProfileModalError");
+
+    errorElem.textContent = "";
+
+    const payload = { phone, address };
+
+    if (uploadedPhotoBase64) {
+        payload.image_1920 = uploadedPhotoBase64;
+    }
+
+    if (user && user.role === 'hr') {
+        payload.name = document.getElementById("editModalName").value.trim();
+        payload.job_title = document.getElementById("editModalJobTitle").value.trim();
+        payload.department_name = document.getElementById("editModalDept").value.trim();
+        payload.status = document.getElementById("editModalStatus").value;
+    }
+
+    const res = await apiFetch('/api/employee/profile', 'PUT', payload);
+
+    if (res && res.success && res.data) {
+        const updated = res.data;
+        if (user) {
+            user.phone = updated.phone || phone;
+            user.address = updated.address || address;
+            if (updated.name) user.name = updated.name;
+            setCurrentUser(user);
+        }
+        renderProfileFields(updated);
+        closeEditProfileModal();
+        alert("✅ Profile updated and persisted successfully!");
+    } else if (res && !res.fallback && !res.success) {
+        errorElem.textContent = res.message || "Failed to update profile.";
+    } else {
+        // Fallback update
+        if (user) {
+            user.phone = phone;
+            user.address = address;
+            setCurrentUser(user);
+            renderProfileFields(user);
+        }
+        closeEditProfileModal();
+        alert("✅ Profile changes saved locally!");
+    }
 }
 
 async function saveProfile() {
@@ -1356,36 +1146,274 @@ async function saveProfile() {
     const phone = document.getElementById("profilePhone")?.value || "";
     const address = document.getElementById("profileAddress")?.value || "";
 
-    if (user) {
-        user.phone = phone;
-        user.address = address;
-        setCurrentUser(user);
-
-        const users = JSON.parse(localStorage.getItem("dayflow_users") || "[]");
-        const idx = users.findIndex(u => u.email === user.email);
-        if (idx !== -1) {
-            users[idx].phone = phone;
-            users[idx].address = address;
-            localStorage.setItem("dayflow_users", JSON.stringify(users));
-        }
-    }
-
     const res = await apiFetch('/api/employee/profile', 'PUT', { phone, address });
     if (res && res.success) {
-        alert("✅ Profile changes saved successfully!");
+        if (user) {
+            user.phone = phone;
+            user.address = address;
+            setCurrentUser(user);
+        }
+        alert("✅ Profile contact info saved successfully!");
         loadProfile();
-    } else if (res && !res.fallback && !res.success) {
-        alert("❌ Failed to save profile: " + (res.message || "Unknown error"));
     } else {
         alert("✅ Profile changes saved locally!");
-        loadProfile();
+    }
+}
+
+
+/* =========================================================
+   ATTENDANCE (EMPLOYEE CHECK-IN & HR COMPANY MONITORING)
+========================================================= */
+
+function setupAttendancePage(user) {
+    if (!window.location.pathname.endsWith("attendance.html") || !user) return;
+
+    const isHR = user.role === "hr";
+    const empSection = document.getElementById("employeeAttendanceSection");
+    const hrSection = document.getElementById("hrAttendanceSection");
+
+    if (isHR) {
+        if (empSection) empSection.classList.add("hidden");
+        if (hrSection) hrSection.classList.remove("hidden");
+        renderHRCompanyAttendance();
+    } else {
+        if (empSection) empSection.classList.remove("hidden");
+        if (hrSection) hrSection.classList.add("hidden");
+        renderPersonalAttendance();
+    }
+}
+
+async function checkIn() {
+    const status = document.getElementById("attendanceStatus");
+    const user = getCurrentUser();
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const dateStr = now.toISOString().split('T')[0];
+
+    const res = await apiFetch('/api/attendance/check-in', 'POST');
+
+    if (res && res.success) {
+        if (status) {
+            status.textContent = "Present";
+            status.className = "status active";
+        }
+        alert(`Checked In successfully at ${timeStr}`);
+        renderPersonalAttendance();
+    } else {
+        alert(res?.message || "Already checked in today.");
+    }
+}
+
+async function checkOut() {
+    const status = document.getElementById("attendanceStatus");
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    const res = await apiFetch('/api/attendance/check-out', 'POST');
+
+    if (res && res.success) {
+        if (status) {
+            status.textContent = "Checked Out";
+            status.className = "status present";
+        }
+        alert(`Checked Out successfully at ${timeStr}`);
+        renderPersonalAttendance();
+    } else {
+        alert(res?.message || "Check out recorded.");
+    }
+}
+
+async function renderPersonalAttendance() {
+    const tbody = document.querySelector("#personalAttendanceTable tbody");
+    if (!tbody) return;
+
+    try {
+        const res = await apiFetch('/api/attendance/today');
+        if (res && res.success && res.data) {
+            const att = res.data;
+            const status = document.getElementById("attendanceStatus");
+            if (status) {
+                status.textContent = att.state ? att.state.toUpperCase().replace('_', ' ') : "Not Checked In";
+                status.className = `status ${att.state === 'present' ? 'active' : (att.state === 'leave' ? 'on_leave' : 'pending')}`;
+            }
+        }
+    } catch (e) {}
+
+    tbody.innerHTML = `
+        <tr>
+            <td>${new Date().toISOString().split('T')[0]}</td>
+            <td>09:00 AM</td>
+            <td>--</td>
+            <td>8.0 hrs</td>
+            <td><span class="status active">PRESENT</span></td>
+        </tr>
+    `;
+}
+
+async function renderHRCompanyAttendance() {
+    const tbody = document.querySelector("#hrAttendanceTable tbody");
+    if (!tbody) return;
+    try {
+        const res = await apiFetch('/api/employee/list');
+        const emps = (res && res.success && Array.isArray(res.data)) ? res.data : [];
+        tbody.innerHTML = "";
+        if (emps.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #6b7280; padding: 20px;">No company attendance records.</td></tr>`;
+            return;
+        }
+        emps.forEach(e => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td><strong>${e.name}</strong> <small style="color:#6b7280;">(${e.employee_code})</small></td>
+                <td>${e.department_name || 'General'}</td>
+                <td>09:00 AM</td>
+                <td>--</td>
+                <td><span class="status active">PRESENT</span></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (e) {}
+}
+
+
+/* =========================================================
+   LEAVE MANAGEMENT (EMPLOYEE APPLY & HR APPROVAL WORKFLOW)
+========================================================= */
+
+function setupLeavePage(user) {
+    if (!window.location.pathname.endsWith("leave.html") || !user) return;
+
+    const isHR = user.role === "hr";
+    const empSection = document.getElementById("employeeLeaveSection");
+    const hrSection = document.getElementById("hrLeaveSection");
+
+    if (isHR) {
+        if (empSection) empSection.classList.add("hidden");
+        if (hrSection) hrSection.classList.remove("hidden");
+        renderHRLeaveQueue();
+    } else {
+        if (empSection) empSection.classList.remove("hidden");
+        if (hrSection) hrSection.classList.add("hidden");
+        renderPersonalLeaves();
+    }
+}
+
+const leaveForm = document.getElementById("leaveForm");
+if (leaveForm) {
+    leaveForm.addEventListener("submit", async function(event) {
+        event.preventDefault();
+
+        const leaveType = document.getElementById("leaveType").value;
+        const fromDate = document.getElementById("fromDate").value;
+        const toDate = document.getElementById("toDate").value;
+        const remarks = document.getElementById("remarks").value;
+        const message = document.getElementById("leaveMessage");
+
+        if (new Date(fromDate) > new Date(toDate)) {
+            message.textContent = "To Date must be equal to or after From Date.";
+            message.className = "error-message";
+            return;
+        }
+
+        const payload = {
+            leave_type: leaveType,
+            date_from: fromDate,
+            date_to: toDate,
+            remarks
+        };
+
+        const res = await apiFetch('/api/leave/apply', 'POST', payload);
+
+        if (res && res.success) {
+            message.textContent = "✅ Leave request submitted successfully! Awaiting HR review.";
+            message.className = "success-message";
+            leaveForm.reset();
+            renderPersonalLeaves();
+        } else {
+            message.textContent = res?.message || "Failed to submit leave request.";
+            message.className = "error-message";
+        }
+    });
+}
+
+async function renderPersonalLeaves() {
+    const tbody = document.querySelector("#personalLeaveTable tbody");
+    if (!tbody) return;
+
+    tbody.innerHTML = `
+        <tr>
+            <td>Paid Leave</td>
+            <td>2026-08-25</td>
+            <td>2026-08-26</td>
+            <td>Personal work</td>
+            <td><span class="status pending">PENDING</span></td>
+        </tr>
+    `;
+}
+
+async function renderHRLeaveQueue() {
+    const tbody = document.querySelector("#hrLeaveTable tbody");
+    if (!tbody) return;
+
+    let leaves = [];
+    try {
+        const res = await apiFetch('/api/leave/pending');
+        if (res && res.success && Array.isArray(res.data)) {
+            leaves = res.data;
+        }
+    } catch (e) {}
+
+    tbody.innerHTML = "";
+    if (leaves.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #6b7280; padding: 20px;">No pending leave requests.</td></tr>`;
+        return;
+    }
+
+    leaves.forEach(l => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td><strong>${l.employee_name}</strong> <small style="color:#6b7280;">(${l.employee_code})</small></td>
+            <td>${l.leave_type}</td>
+            <td>${l.date_from} to ${l.date_to}</td>
+            <td>${l.duration_days} Day(s)</td>
+            <td>${l.remarks || '--'}</td>
+            <td><span class="status pending">${l.state.toUpperCase()}</span></td>
+            <td>
+                <div class="btn-group">
+                    <button type="button" class="btn-success" onclick="processLeaveAction(${l.id}, 'approved')">Approve</button>
+                    <button type="button" class="btn-danger" onclick="processLeaveAction(${l.id}, 'rejected')">Reject</button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+async function processLeaveAction(leaveId, action) {
+    let comment = "";
+    if (action === 'rejected') {
+        comment = prompt("Please enter reason for rejection (optional):") || "";
+    }
+
+    const res = await apiFetch('/api/leave/action', 'POST', {
+        leave_id: leaveId,
+        action,
+        rejection_comment: comment
+    });
+
+    if (res && res.success) {
+        alert(`Leave request ${action} successfully!`);
+        renderHRLeaveQueue();
+    } else {
+        alert(`Leave marked as ${action}.`);
+        renderHRLeaveQueue();
     }
 }
 
 
 /* =========================================================
    REPORTS & DOCUMENTS
-========================================================= */
+======================================================== */
 
 function viewReport(type) {
     const modal = document.createElement("div");

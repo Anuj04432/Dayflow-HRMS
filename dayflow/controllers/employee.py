@@ -108,7 +108,28 @@ class DayflowEmployeeController(http.Controller):
 
         try:
             employee.update_permitted_profile(vals)
-            return json_response(message='Profile updated successfully.')
+            photo_str = None
+            if employee.image_1920:
+                if isinstance(employee.image_1920, bytes):
+                    photo_str = employee.image_1920.decode('utf-8')
+                else:
+                    photo_str = str(employee.image_1920)
+
+            updated_data = {
+                'id': employee.id,
+                'name': employee.name,
+                'employee_code': employee.employee_code,
+                'work_email': employee.work_email,
+                'phone': employee.phone or '',
+                'address': employee.address or '',
+                'job_title': employee.job_title or '',
+                'department_name': employee.department_name or '',
+                'join_date': str(employee.join_date) if employee.join_date else '',
+                'status': employee.status,
+                'has_photo': bool(employee.image_1920),
+                'image_1920': photo_str,
+            }
+            return json_response(data=updated_data, message='Profile updated successfully.')
         except Exception as e:
             _logger.exception("Profile update error: %s", str(e))
             return json_response(success=False, status=400, message=str(e))

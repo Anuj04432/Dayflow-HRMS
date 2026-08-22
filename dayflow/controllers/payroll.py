@@ -140,17 +140,26 @@ class DayflowPayrollController(http.Controller):
         if not is_hr_user(user):
             return json_response(success=False, status=403, message='Access denied: HR privileges required.')
 
-        payrolls = request.env['dayflow.payroll'].sudo().search([])
+        employees = request.env['dayflow.employee'].sudo().search([])
         result = []
-        for p in payrolls:
+        for emp in employees:
+            p = request.env['dayflow.payroll'].sudo().search([('employee_id', '=', emp.id)], limit=1)
+            if not p:
+                p = request.env['dayflow.payroll'].sudo().create({
+                    'employee_id': emp.id,
+                    'basic_salary': 50000.0,
+                    'hra': 15000.0,
+                    'special_allowance': 5000.0,
+                    'deductions': 2000.0,
+                })
             last_updated_str = p.last_updated.strftime('%Y-%m-%d %H:%M:%S') if (p.last_updated and hasattr(p.last_updated, 'strftime')) else (str(p.last_updated) if p.last_updated else None)
             result.append({
                 'id': p.id,
-                'employee_id': p.employee_id.id,
-                'employee_name': p.employee_id.name,
-                'employee_code': p.employee_id.employee_code,
-                'department_name': p.employee_id.department_name,
-                'job_title': p.employee_id.job_title,
+                'employee_id': emp.id,
+                'employee_name': emp.name,
+                'employee_code': emp.employee_code,
+                'department_name': emp.department_name,
+                'job_title': emp.job_title,
                 'basic_salary': p.basic_salary,
                 'hra': p.hra,
                 'special_allowance': p.special_allowance,

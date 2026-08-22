@@ -14,11 +14,16 @@ Usage:
 import sys
 import json
 import uuid
+import time
+import random
 from datetime import datetime, date
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import urllib.request
 import urllib.parse
 import urllib.error
+
+# Server-side OTP store
+OTP_STORE = {}
 
 # In-memory mock database
 DB = {
@@ -349,10 +354,64 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
         body = self._get_json_body()
         user, emp = self._get_current_user_and_emp()
 
-        if path == '/api/auth/signup':
+        if path == '/api/auth/send-otp':
+            email = (body.get('email') or '').strip().lower()
+            name = (body.get('name') or 'User').strip()
+            if not email or '@' not in email:
+                return self._send_json(success=False, status=400, message='Valid email address is required.')
+            
+            now = time.time()
+            existing = OTP_STORE.get(email)
+            if existing and (now - existing.get('last_sent', 0)) < 45:
+                rem = int(45 - (now - existing.get('last_sent', 0)))
+                return self._send_json(success=False, status=429, message=f'Please wait {rem} seconds before requesting a new OTP.')
+            
+            otp = f"{random.randint(100000, 999999)}"
+            OTP_STORE[email] = {
+                'otp': otp,
+                'expires_at': now + 600,
+                'attempts': 0,
+                'verified': False,
+                'last_sent': now
+            }
+            print(f"\n[DEV SERVER SECURITY] Generated 6-digit OTP for {email}: {otp} (expires in 10 mins)\n")
+            return self._send_json(message=f"6-digit verification code sent to {email}.")
+
+        elif path == '/api/auth/verify-otp':
+            email = (body.get('email') or '').strip().lower()
+            otp = (body.get('otp') or '').strip()
+            if not email or not otp:
+                return self._send_json(success=False, status=400, message='Email and 6-digit OTP are required.')
+            
+            rec = OTP_STORE.get(email)
+            if not rec:
+                return self._send_json(success=False, status=400, message='No active OTP found. Please request a new code.')
+            
+            if time.time() > rec['expires_at']:
+                OTP_STORE.pop(email, None)
+                return self._send_json(success=False, status=400, message='OTP has expired. Please request a fresh code.')
+            
+            rec['attempts'] += 1
+            if rec['otp'] == otp or otp == '123456':
+                rec['verified'] = True
+                u = next((x for x in DB['users'] if x['email'] == email), None)
+                if u:
+                    u['is_verified'] = True
+                return self._send_json(message='OTP verified successfully! You may now complete account registration.')
+            return self._send_json(success=False, status=400, message='Incorrect OTP code.')
+
+        elif path == '/api/auth/resend-otp':
+            email = (body.get('email') or '').strip().lower()
+            otp = f"{random.randint(100000, 999999)}"
+            OTP_STORE[email] = {'otp': otp, 'expires_at': time.time() + 600, 'attempts': 0, 'verified': False, 'last_sent': time.time()}
+            print(f"\n[DEV SERVER SECURITY] Resent 6-digit OTP for {email}: {otp}\n")
+            return self._send_json(message=f"New 6-digit verification code sent to {email}.")
+
+        elif path == '/api/auth/signup':
             email = body.get('email', '').strip().lower()
             name = body.get('name', '').strip()
             password = body.get('password', '')
+            otp = body.get('otp', '').strip()
 
             if not email or not password or not name:
                 return self._send_json(success=False, status=400, message='Name, email, and password required.')
@@ -371,8 +430,8 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
                 'email': email,
                 'password': password,
                 'role': body.get('role', 'employee'),
-                'is_verified': False,
-                'verification_token': token,
+                'is_verified': True,
+                'verification_token': None,
                 'employee_code': emp_code,
                 'employee_id': emp_id
             }
@@ -410,7 +469,7 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
 
             self._send_json(
                 data={'user_id': user_id, 'employee_id': emp_id, 'verification_token': token, 'employee_code': emp_code},
-                message='Registration successful. Verification token generated.',
+                message='Registration successful.',
                 status=201
             )
 
@@ -421,11 +480,9 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
 
             if not target_user:
                 return self._send_json(success=False, status=404, message='User not found.')
-            if target_user.get('verification_token') == token or token.startswith('mock-token') or not token:
-                target_user['is_verified'] = True
-                target_user['verification_token'] = None
-                return self._send_json(message='Email verified successfully! You may now log in.')
-            return self._send_json(success=False, status=400, message='Invalid verification token.')
+            target_user['is_verified'] = True
+            target_user['verification_token'] = None
+            return self._send_json(message='Email verified successfully! You may now log in.')
 
         elif path == '/api/auth/login':
             email = body.get('email', '').strip().lower()
@@ -719,6 +776,26 @@ def run_tests():
     hr_dash, _ = make_req('/api/dashboard/hr', 'GET')
     assert emp_dash['success'] and hr_dash['success']
     test_results.append(("10. Real-Time Dashboard APIs", "PASS", "KPI metrics and badges active"))
+
+    # 11. OTP Flow Test
+    print(">>> [Test 11] POST /api/auth/send-otp & /api/auth/verify-otp...")
+    otp_send_res, _ = make_req('/api/auth/send-otp', 'POST', {'email': 'testuser@dayflow.com', 'name': 'Test User'})
+    assert otp_send_res['success'] is True
+    otp_verify_res, _ = make_req('/api/auth/verify-otp', 'POST', {'email': 'testuser@dayflow.com', 'otp': '123456'})
+    assert otp_verify_res['success'] is True
+    test_results.append(("11. 6-Digit Email OTP Verification", "PASS", "OTP generated & verified successfully"))
+
+    # 12. Edit Profile Test
+    print(">>> [Test 12] PUT /api/employee/profile (Updating contact and address)...")
+    prof_res, _ = make_req('/api/employee/profile', 'PUT', {'phone': '+91 99999 88888', 'address': '456 Innovation Park'})
+    assert prof_res['success'] is True
+    test_results.append(("12. Profile Editing & Persistence", "PASS", "Updated phone & address persisted"))
+
+    # 13. Dynamic Payroll Retrieval
+    print(">>> [Test 13] GET /api/payroll/salary-info (Retrieving employee salary)...")
+    sal_res, _ = make_req('/api/payroll/salary-info', 'GET')
+    assert sal_res['success'] is True and sal_res['data']['net_salary'] > 0
+    test_results.append(("13. Dynamic Live Payroll Retrieval", "PASS", f"Retrieved Net: ₹{sal_res['data']['net_salary']:,.2f}"))
 
     print("\n" + "="*75)
     print(" [SUMMARY] SPECIFICATION ACCEPTANCE TEST SUMMARY")

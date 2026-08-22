@@ -68,7 +68,7 @@
         <header class="topbar">
             <div>
                 <h2>My Profile</h2>
-                <p>View employee record and update permitted contact information.</p>
+                <p>View employee record and manage contact information.</p>
             </div>
 
             <div class="user-box">
@@ -80,16 +80,24 @@
 
         <section class="dashboard-content">
 
-            <div class="profile-header section-card">
+            <div class="profile-header section-card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
 
-                <div class="profile-picture">
-                    <span>--</span>
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <div class="profile-picture" id="profileAvatarWrap">
+                        <span id="profileAvatarInitials">--</span>
+                    </div>
+
+                    <div>
+                        <h2 id="profileName">Loading...</h2>
+                        <p>Employee ID: <strong id="profileEmpId">--</strong></p>
+                        <p id="profileDept" style="color: #6b7280; font-size: 13px;">--</p>
+                    </div>
                 </div>
 
                 <div>
-                    <h2 id="profileName">Loading...</h2>
-                    <p>Employee ID: <span id="profileEmpId">--</span></p>
-                    <p id="profileDept">--</p>
+                    <button type="button" class="primary-btn" style="width: auto; padding: 10px 20px;" onclick="openEditProfileModal()">
+                        ✏️ Edit Profile
+                    </button>
                 </div>
 
             </div>
@@ -99,7 +107,12 @@
 
                 <div class="section-card">
 
-                    <h3>Personal Details</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h3 style="margin-bottom: 0;">Personal Details</h3>
+                        <button type="button" class="secondary-btn" style="padding: 4px 10px; font-size: 12px;" onclick="openEditProfileModal()">
+                            ✏️ Edit
+                        </button>
+                    </div>
 
                     <div class="detail-grid">
 
@@ -179,17 +192,17 @@
 
                         <div>
                             <span>Basic Salary</span>
-                            <strong id="profileBasic">₹35,000</strong>
+                            <strong id="profileBasic">--</strong>
                         </div>
 
                         <div>
                             <span>Allowances</span>
-                            <strong id="profileAllowances">₹13,000</strong>
+                            <strong id="profileAllowances">--</strong>
                         </div>
 
                         <div>
                             <span>Gross Monthly</span>
-                            <strong id="profileGross">₹48,000</strong>
+                            <strong id="profileGross">--</strong>
                         </div>
 
                     </div>
@@ -219,6 +232,73 @@
 
     </main>
 
+</div>
+
+<!-- Edit Profile Modal -->
+<div id="editProfileModal" class="dayflow-modal hidden">
+    <div class="modal-content" style="max-width: 540px;">
+        <div class="modal-header">
+            <h3>✏️ Edit Profile Information</h3>
+            <button type="button" class="modal-close-btn" onclick="closeEditProfileModal()">×</button>
+        </div>
+        <form id="editProfileModalForm" onsubmit="submitEditProfileModal(event)">
+            <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
+                
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="editModalPhoto">Profile Photo (PNG/JPG)</label>
+                    <input type="file" id="editModalPhoto" accept="image/*" onchange="previewProfilePhoto(event)">
+                    <div id="photoPreviewWrap" style="margin-top: 8px; display: none;">
+                        <img id="photoPreviewImg" src="" alt="Preview" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid #4f46e5;">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="editModalPhone">Phone Number</label>
+                    <input type="text" id="editModalPhone" placeholder="+91 98765 00000" required>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="editModalAddress">Residential Address</label>
+                    <textarea id="editModalAddress" rows="2" placeholder="Full residential street, city, state" required></textarea>
+                </div>
+
+                <!-- Protected Fields for HR Role Only -->
+                <div id="hrProtectedEditFields" class="hidden" style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 10px;">
+                    <span style="font-size: 11px; font-weight: 700; color: #4f46e5; text-transform: uppercase;">HR Administrative Controls</span>
+                    
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="editModalName">Full Name</label>
+                        <input type="text" id="editModalName">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="editModalJobTitle">Job Title / Designation</label>
+                        <input type="text" id="editModalJobTitle">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="editModalDept">Department</label>
+                        <input type="text" id="editModalDept">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="editModalStatus">Employment Status</label>
+                        <select id="editModalStatus">
+                            <option value="active">Active</option>
+                            <option value="on_leave">On Leave</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+
+                <p id="editProfileModalError" class="error-message" style="margin-bottom: 0;"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="secondary-btn" onclick="closeEditProfileModal()">Cancel</button>
+                <button type="submit" class="primary-btn" style="width: auto;">Save & Persist Changes</button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <script src="../js/script.js"></script>

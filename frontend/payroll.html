@@ -82,29 +82,39 @@
 
         <section class="dashboard-content">
 
-            <!-- ================= EMPLOYEE PAYROLL SECTION ================= -->
+            <!-- HR View Switcher Tabs -->
+            <div id="hrPayrollTabs" class="tabs hidden" style="margin-bottom: 25px;">
+                <button type="button" id="tabCompanyPayrollBtn" class="tab active" onclick="switchPayrollTab('company')">
+                    🏢 Company Payroll Overview
+                </button>
+                <button type="button" id="tabPersonalPayrollBtn" class="tab" onclick="switchPayrollTab('personal')">
+                    👤 My Personal Salary Slip
+                </button>
+            </div>
+
+            <!-- ================= EMPLOYEE PERSONAL PAYROLL SECTION ================= -->
             <div id="employeePayrollSection">
 
                 <div class="salary-summary">
 
                     <div class="salary-card">
                         <span>Basic Salary</span>
-                        <h2 id="payrollBasic">--</h2>
+                        <h2 id="payrollBasic">₹0</h2>
                     </div>
 
                     <div class="salary-card">
                         <span>Allowances & HRA</span>
-                        <h2 id="payrollAllowances">--</h2>
+                        <h2 id="payrollAllowances">₹0</h2>
                     </div>
 
                     <div class="salary-card">
                         <span>Tax & Deductions</span>
-                        <h2 id="payrollDeductions">--</h2>
+                        <h2 id="payrollDeductions">₹0</h2>
                     </div>
 
                     <div class="salary-card">
                         <span>Net Take-Home</span>
-                        <h2 id="payrollNet" style="color: #4f46e5;">--</h2>
+                        <h2 id="payrollNet" style="color: #4f46e5;">₹0</h2>
                     </div>
 
                 </div>
@@ -138,22 +148,22 @@
 
                                 <tr>
                                     <td>Basic Salary</td>
-                                    <td id="tblBasic">--</td>
+                                    <td id="tblBasic">₹0</td>
                                 </tr>
 
                                 <tr>
                                     <td>House Rent Allowance (HRA)</td>
-                                    <td id="tblHRA">--</td>
+                                    <td id="tblHRA">₹0</td>
                                 </tr>
 
                                 <tr>
                                     <td>Special & Medical Allowances</td>
-                                    <td id="tblAllowances">--</td>
+                                    <td id="tblAllowances">₹0</td>
                                 </tr>
 
                                 <tr style="color: #dc2626;">
                                     <td>Statutory Deductions (PF / TDS)</td>
-                                    <td id="tblDeductions">--</td>
+                                    <td id="tblDeductions">-₹0</td>
                                 </tr>
 
                                 <tr style="background: #f8fafc; font-size: 15px;">
@@ -162,7 +172,7 @@
                                     </td>
 
                                     <td>
-                                        <strong id="tblNet" style="color: #4f46e5;">--</strong>
+                                        <strong id="tblNet" style="color: #4f46e5;">₹0</strong>
                                     </td>
                                 </tr>
 
@@ -184,30 +194,30 @@
 
                     <div class="stat-card">
                         <div class="stat-icon">💰</div>
-                        <h3>Monthly Payroll</h3>
-                        <h2 id="hrPayrollMonthlyTotal" style="color: #4f46e5;">--</h2>
-                        <p>Total company expenditure</p>
+                        <h3>Total Monthly Payroll</h3>
+                        <h2 id="hrPayrollMonthlyTotal" style="color: #4f46e5;">₹0</h2>
+                        <p>Total company disbursement</p>
                     </div>
 
                     <div class="stat-card">
                         <div class="stat-icon">👥</div>
                         <h3>Salaried Employees</h3>
-                        <h2 id="hrPayrollCount">--</h2>
-                        <p>Active pay cycle</p>
+                        <h2 id="hrPayrollCount">0</h2>
+                        <p>Active payroll records</p>
                     </div>
 
                     <div class="stat-card">
                         <div class="stat-icon">📉</div>
                         <h3>Total Deductions</h3>
-                        <h2 id="hrPayrollTotalDeductions" style="color: #dc2626;">--</h2>
-                        <p>TDS, PF, & Insurance</p>
+                        <h2 id="hrPayrollTotalDeductions" style="color: #dc2626;">₹0</h2>
+                        <p>PF & Tax withholdings</p>
                     </div>
 
                     <div class="stat-card">
-                        <div class="stat-icon">🏦</div>
+                        <div class="stat-icon">⚡</div>
                         <h3>Disbursement Status</h3>
-                        <h2 style="color: #16a34a;">Ready</h2>
-                        <p>August 2026 cycle</p>
+                        <h2 style="color: #16a34a;">Processed</h2>
+                        <p>August 2026 Cycle</p>
                     </div>
 
                 </div>
@@ -216,7 +226,7 @@
                 <div class="section-card">
 
                     <div class="section-header">
-                        <h3>Company Salary Structure Directory</h3>
+                        <h3>Employee Salary Directory</h3>
                     </div>
 
                     <div class="table-container">
@@ -227,16 +237,18 @@
                                 <tr>
                                     <th>Employee</th>
                                     <th>Department</th>
-                                    <th>Basic</th>
-                                    <th>Allowances</th>
-                                    <th>Deductions</th>
-                                    <th>Net Salary</th>
+                                    <th>Basic (₹)</th>
+                                    <th>Allowances (₹)</th>
+                                    <th>Deductions (₹)</th>
+                                    <th>Net Salary (₹)</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
 
                             <tbody>
-                                <!-- Dynamically populated by script.js -->
+                                <tr>
+                                    <td colspan="7" style="text-align: center; color: #6b7280; padding: 20px;">Loading live payroll records...</td>
+                                </tr>
                             </tbody>
 
                         </table>
