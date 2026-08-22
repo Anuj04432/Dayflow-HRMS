@@ -1,5 +1,11 @@
 # Dayflow — Human Resource Management System
 
+## 🎥 Reference Video
+
+The following video demonstrates the reference workflow, UI, and functionality for this project:
+
+[▶️ Watch the Reference Video](https://drive.google.com/file/d/1VaCrKVOKnlV2NQEvF01Y3-V97Se4sew3/view?usp=sharing)
+
 > **Every workday, perfectly aligned.**
 
 Dayflow is a modern, full-stack **Human Resource Management System (HRMS)** built as an **Odoo Hackathon project**. It combines an enterprise-grade Odoo backend with a high-performance, mobile-responsive web portal. Dayflow digitizes, automates, and streamlines critical daily workforce operations — from authentication and biometric attendance to leave management, profile management, dynamic payroll calculation, and executive dashboard analytics.
