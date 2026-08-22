@@ -26,6 +26,7 @@ Core Odoo HRMS module managing:
     'data': [
         'security/security.xml',
         'security/ir.model.access.csv',
+        'data/leave_type_data.xml',
     ],
     'demo': [],
     'installable': True,
