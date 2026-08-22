@@ -67,8 +67,11 @@ class DayflowEmployeeController(http.Controller):
             vals['phone'] = (body['phone'] or '').strip()
         if 'address' in body:
             vals['address'] = (body['address'] or '').strip()
-        if 'image_1920' in body:
-            vals['image_1920'] = body['image_1920']
+        if 'image_1920' in body and body['image_1920']:
+            img_val = body['image_1920']
+            if isinstance(img_val, str) and ',' in img_val:
+                img_val = img_val.split(',', 1)[1]
+            vals['image_1920'] = img_val
 
         # Fields editable ONLY by HR
         if is_hr:

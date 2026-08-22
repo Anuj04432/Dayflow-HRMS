@@ -58,6 +58,20 @@ class DayflowLeaveController(http.Controller):
         except ValueError:
             return json_response(success=False, status=400, message='Invalid date format. Use YYYY-MM-DD.')
 
+        # Prevent duplicate / overlapping leave requests
+        overlapping = request.env['dayflow.leave'].search([
+            ('employee_id', '=', employee.id),
+            ('state', 'in', ('pending', 'approved')),
+            ('date_from', '<=', d_to),
+            ('date_to', '>=', d_from),
+        ], limit=1)
+        if overlapping:
+            return json_response(
+                success=False,
+                status=400,
+                message=f'You already have an active leave request for overlapping dates ({overlapping.date_from} to {overlapping.date_to}).'
+            )
+
         leave_req = request.env['dayflow.leave'].create({
             'employee_id': employee.id,
             'leave_type': leave_type,

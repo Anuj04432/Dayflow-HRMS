@@ -102,12 +102,10 @@ class DayflowAttendanceController(http.Controller):
         if not employee:
             return json_response(success=False, status=404, message='Employee profile not found.')
 
-        today = fields.Date.today()
         active_attendance = request.env['dayflow.attendance'].search([
             ('employee_id', '=', employee.id),
-            ('date', '=', today),
             ('check_out', '=', False)
-        ], order='id desc', limit=1)
+        ], order='check_in desc', limit=1)
 
         if not active_attendance:
             return json_response(
