@@ -56,29 +56,33 @@ textarea {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #eef2ff, #f8fafc);
+    background: radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.18) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.12) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.15) 0px, transparent 50%),
+                #f1f5f9;
     padding: 20px;
 }
 
 .auth-container {
-    width: 980px;
+    width: 1000px;
     max-width: 100%;
-    min-height: 620px;
+    min-height: 630px;
     display: grid;
-    grid-template-columns: 1.1fr 1fr;
+    grid-template-columns: 1.15fr 1fr;
     background: white;
-    border-radius: 20px;
+    border-radius: 24px;
     overflow: hidden;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.18), 0 0 0 1px rgba(226, 232, 240, 0.8);
 }
 
 .auth-left {
     padding: 50px 45px;
-    background: linear-gradient(145deg, #4f46e5, #3730a3);
+    background: linear-gradient(145deg, #4338ca 0%, #3730a3 50%, #1e1b4b 100%);
     color: white;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    position: relative;
 }
 
 .brand h1 {
@@ -370,7 +374,7 @@ textarea {
 
 .sidebar {
     width: 250px;
-    background: #111827;
+    background: linear-gradient(180deg, #0b0f19 0%, #111827 50%, #1e1b4b 100%);
     color: white;
     padding: 25px 16px;
     display: flex;
@@ -380,12 +384,13 @@ textarea {
     bottom: 0;
     left: 0;
     z-index: 100;
-    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .sidebar-brand {
     padding: 5px 12px 25px;
-    border-bottom: 1px solid #1f2937;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     margin-bottom: 20px;
 }
 
@@ -401,8 +406,9 @@ textarea {
     margin-top: 4px;
     font-size: 12px;
     font-weight: 600;
-    color: #818cf8;
-    background: rgba(99, 102, 241, 0.15);
+    color: #a5b4fc;
+    background: rgba(99, 102, 241, 0.2);
+    border: 1px solid rgba(165, 180, 252, 0.3);
     padding: 2px 8px;
     border-radius: 12px;
 }
@@ -420,8 +426,8 @@ textarea {
     align-items: center;
     gap: 12px;
     padding: 12px 14px;
-    border-radius: 8px;
-    color: #9ca3af;
+    border-radius: 10px;
+    color: #94a3b8;
     font-weight: 500;
     font-size: 14px;
     transition: all 0.2s ease;
@@ -434,23 +440,25 @@ textarea {
 }
 
 .sidebar nav a:hover {
-    background: #1f2937;
+    background: rgba(255, 255, 255, 0.08);
     color: white;
+    transform: translateX(2px);
 }
 
 .sidebar nav a.active {
-    background: #4f46e5;
+    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
     color: white;
     font-weight: 600;
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.45);
 }
 
 .logout-btn {
     margin-top: auto;
     padding: 12px 14px;
-    border: 1px solid #374151;
-    background: transparent;
-    color: #e5e7eb;
-    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: #e2e8f0;
+    border-radius: 10px;
     cursor: pointer;
     font-weight: 600;
     font-size: 14px;
@@ -465,6 +473,7 @@ textarea {
     background: #dc2626;
     border-color: #dc2626;
     color: white;
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
 }
 
 .main-content {
@@ -473,7 +482,9 @@ textarea {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    background: radial-gradient(at 100% 0%, rgba(99, 102, 241, 0.07) 0px, transparent 50%),
+                radial-gradient(at 0% 100%, rgba(14, 165, 233, 0.05) 0px, transparent 50%),
+                #f8fafc;
 }
 
 .topbar {

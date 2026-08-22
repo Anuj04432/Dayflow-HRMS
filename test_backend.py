@@ -17,7 +17,7 @@ import uuid
 import time
 import random
 from datetime import datetime, date
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 import urllib.request
 import urllib.parse
 import urllib.error
@@ -666,7 +666,7 @@ def run_tests():
         sys.stdout.reconfigure(encoding='utf-8')
 
     port = 8069
-    server = HTTPServer(('127.0.0.1', port), DayflowMockHandler)
+    server = ThreadingHTTPServer(('127.0.0.1', port), DayflowMockHandler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     time.sleep(0.3)
@@ -811,7 +811,7 @@ def run_tests():
 if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] == '--serve':
         port = 8069
-        server = HTTPServer(('0.0.0.0', port), DayflowMockHandler)
+        server = ThreadingHTTPServer(('0.0.0.0', port), DayflowMockHandler)
         print(f"\n[INFO] Dayflow HRMS Backend API Server running on http://localhost:{port}")
         print("[INFO] Ready to accept requests from your frontend HTML/JS files!")
         print("[INFO] Press Ctrl+C to stop the server.\n")

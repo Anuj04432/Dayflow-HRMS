@@ -4,7 +4,7 @@
  * OTP email verification, dynamic profile editing, and comprehensive payroll management.
  */
 
-const API_BASE = window.DAYFLOW_API_BASE || 'http://localhost:8069';
+const API_BASE = window.DAYFLOW_API_BASE || 'http://127.0.0.1:8069';
 
 /* =========================================================
    INITIAL DATA & LOCAL STORAGE MANAGEMENT (NO HARDCODED DATA)
@@ -1535,7 +1535,7 @@ async function setupReportsPage(user) {
 
 
 /* =========================================================
-   DOM CONTENT LOADED INITIALIZATION
+   DOM CONTENT LOADED INITIALIZATION (TARGETED & FAST)
 ========================================================= */
 
 document.addEventListener("DOMContentLoaded", function() {
@@ -1545,13 +1545,23 @@ document.addEventListener("DOMContentLoaded", function() {
     // Apply role-based sidebar & topbar branding
     setupSidebarAndNav(user);
 
-    // Apply role-based views on shared pages
-    setupHRDashboard(user);
-    setupEmployeeDashboard(user);
-    setupAttendancePage(user);
-    setupLeavePage(user);
-    setupPayrollPage(user);
-    setupNotificationsPage(user);
-    setupReportsPage(user);
-    loadProfile();
+    // Fast targeted page execution
+    const path = window.location.pathname;
+    if (path.endsWith("hr-dashboard.html")) {
+        setupHRDashboard(user);
+    } else if (path.endsWith("employee-dashboard.html")) {
+        setupEmployeeDashboard(user);
+    } else if (path.endsWith("attendance.html")) {
+        setupAttendancePage(user);
+    } else if (path.endsWith("leave.html")) {
+        setupLeavePage(user);
+    } else if (path.endsWith("payroll.html")) {
+        setupPayrollPage(user);
+    } else if (path.endsWith("profile.html")) {
+        loadProfile();
+    } else if (path.endsWith("notifications.html")) {
+        setupNotificationsPage(user);
+    } else if (path.endsWith("reports.html")) {
+        setupReportsPage(user);
+    }
 });

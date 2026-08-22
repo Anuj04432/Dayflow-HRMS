@@ -13,7 +13,7 @@ import sys
 import os
 import threading
 import time
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from test_backend import DayflowMockHandler
 
 if hasattr(sys.stdout, 'reconfigure'):
@@ -31,8 +31,8 @@ def run_full_stack():
     backend_port = 8069
     frontend_port = 8000
 
-    backend_server = HTTPServer(('0.0.0.0', backend_port), DayflowMockHandler)
-    frontend_server = HTTPServer(('0.0.0.0', frontend_port), FrontendHandler)
+    backend_server = ThreadingHTTPServer(('0.0.0.0', backend_port), DayflowMockHandler)
+    frontend_server = ThreadingHTTPServer(('0.0.0.0', frontend_port), FrontendHandler)
 
     backend_thread = threading.Thread(target=backend_server.serve_forever, daemon=True)
     frontend_thread = threading.Thread(target=frontend_server.serve_forever, daemon=True)
