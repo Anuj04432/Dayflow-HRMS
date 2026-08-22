@@ -93,9 +93,31 @@ textarea {
     font-size: 15px;
 }
 
+.auth-hero-image-wrap {
+    margin: 18px 0;
+    text-align: center;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.auth-hero-img {
+    width: 100%;
+    max-height: 200px;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.4s ease;
+}
+
+.auth-hero-img:hover {
+    transform: scale(1.04);
+}
+
 .auth-info h2 {
-    font-size: 26px;
-    margin-bottom: 14px;
+    font-size: 24px;
+    margin-bottom: 10px;
     font-weight: 700;
 }
 

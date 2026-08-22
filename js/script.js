@@ -1058,6 +1058,9 @@ async function setupHRDashboard(user) {
             });
         }
     } catch (e) {}
+
+    // Render HR Analytics Charts
+    initHRCharts();
 }
 
 async function setupEmployeeDashboard(user) {
@@ -1065,6 +1068,200 @@ async function setupEmployeeDashboard(user) {
     const welcomeHeader = document.querySelector(".topbar div p");
     if (welcomeHeader && user.name) {
         welcomeHeader.textContent = `Welcome back, ${user.name}!`;
+    }
+
+    // Render Employee Analytics Charts
+    initEmployeeCharts();
+}
+
+/* =========================================================
+   ANALYTICS & INTERACTIVE CHARTS
+========================================================= */
+
+function initHRCharts() {
+    if (typeof Chart === 'undefined') return;
+
+    // 1. Weekly Attendance Trends (Bar Chart)
+    const ctxAtt = document.getElementById("chartAttendanceTrend");
+    if (ctxAtt && !ctxAtt._chartInstance) {
+        ctxAtt._chartInstance = new Chart(ctxAtt, {
+            type: 'bar',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+                datasets: [
+                    {
+                        label: 'Present',
+                        data: [118, 120, 115, 122, 112],
+                        backgroundColor: '#4f46e5',
+                        borderRadius: 6,
+                    },
+                    {
+                        label: 'On Leave',
+                        data: [4, 3, 6, 2, 8],
+                        backgroundColor: '#38bdf8',
+                        borderRadius: 6,
+                    },
+                    {
+                        label: 'Absent',
+                        data: [2, 1, 3, 0, 4],
+                        backgroundColor: '#f43f5e',
+                        borderRadius: 6,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top', labels: { font: { size: 11 }, boxWidth: 12 } }
+                },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { beginAtZero: true, grid: { color: '#f1f5f9' } }
+                }
+            }
+        });
+    }
+
+    // 2. Department Headcount Distribution (Doughnut Chart)
+    const ctxDept = document.getElementById("chartDeptDistribution");
+    if (ctxDept && !ctxDept._chartInstance) {
+        ctxDept._chartInstance = new Chart(ctxDept, {
+            type: 'doughnut',
+            data: {
+                labels: ['Engineering', 'Marketing', 'Finance', 'Human Resources', 'Operations'],
+                datasets: [{
+                    data: [55, 25, 18, 14, 12],
+                    backgroundColor: ['#4f46e5', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b'],
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 10 } }
+                },
+                cutout: '62%'
+            }
+        });
+    }
+
+    // 3. Leave Approval Status (Doughnut Chart)
+    const ctxLeave = document.getElementById("chartLeaveStatus");
+    if (ctxLeave && !ctxLeave._chartInstance) {
+        ctxLeave._chartInstance = new Chart(ctxLeave, {
+            type: 'doughnut',
+            data: {
+                labels: ['Approved', 'Pending', 'Rejected'],
+                datasets: [{
+                    data: [18, 5, 2],
+                    backgroundColor: ['#10b981', '#f59e0b', '#f43f5e'],
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } }
+                },
+                cutout: '58%'
+            }
+        });
+    }
+
+    // 4. Monthly Payroll Distribution (Horizontal / Vertical Bar Chart)
+    const ctxPayroll = document.getElementById("chartPayrollBreakdown");
+    if (ctxPayroll && !ctxPayroll._chartInstance) {
+        ctxPayroll._chartInstance = new Chart(ctxPayroll, {
+            type: 'bar',
+            data: {
+                labels: ['Basic Salary', 'HRA', 'Special Allowances', 'Statutory Deductions'],
+                datasets: [{
+                    label: 'Amount (₹ in Thousands)',
+                    data: [650, 210, 140, 65],
+                    backgroundColor: ['#4f46e5', '#6366f1', '#10b981', '#ef4444'],
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { beginAtZero: true, grid: { color: '#f1f5f9' } }
+                }
+            }
+        });
+    }
+}
+
+function initEmployeeCharts() {
+    if (typeof Chart === 'undefined') return;
+
+    // 1. Weekly Worked Hours Trend (Line Chart)
+    const ctxHours = document.getElementById("chartEmpHoursTrend");
+    if (ctxHours && !ctxHours._chartInstance) {
+        ctxHours._chartInstance = new Chart(ctxHours, {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+                datasets: [{
+                    label: 'Hours Worked',
+                    data: [8.5, 9.0, 8.2, 8.8, 8.0],
+                    borderColor: '#4f46e5',
+                    backgroundColor: 'rgba(79, 70, 229, 0.12)',
+                    borderWidth: 3,
+                    tension: 0.35,
+                    fill: true,
+                    pointBackgroundColor: '#4f46e5',
+                    pointRadius: 5,
+                    pointHoverRadius: 7
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { min: 0, max: 12, grid: { color: '#f1f5f9' }, ticks: { stepSize: 2 } }
+                }
+            }
+        });
+    }
+
+    // 2. Monthly Attendance Ratio (Doughnut Chart)
+    const ctxRatio = document.getElementById("chartEmpAttendanceRatio");
+    if (ctxRatio && !ctxRatio._chartInstance) {
+        ctxRatio._chartInstance = new Chart(ctxRatio, {
+            type: 'doughnut',
+            data: {
+                labels: ['Present (21 Days)', 'Approved Leave (2 Days)', 'Weekend/Holidays (4 Days)'],
+                datasets: [{
+                    data: [21, 2, 4],
+                    backgroundColor: ['#10b981', '#f59e0b', '#6366f1'],
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 10 } }
+                },
+                cutout: '68%'
+            }
+        });
     }
 }
 
