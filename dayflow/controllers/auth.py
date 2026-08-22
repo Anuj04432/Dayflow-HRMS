@@ -26,12 +26,13 @@ def send_email_otp(recipient_email, otp_code, recipient_name="User"):
     Sends the 6-digit OTP code to the recipient's email address via SMTP
     if environment credentials exist, or logs safely to server output for local dev.
     """
-    smtp_host = os.environ.get('DAYFLOW_SMTP_HOST') or os.environ.get('SMTP_SERVER')
-    smtp_port = int(os.environ.get('DAYFLOW_SMTP_PORT') or 587)
-    smtp_user = os.environ.get('DAYFLOW_SMTP_USER')
-    smtp_pass = os.environ.get('DAYFLOW_SMTP_PASS')
-    from_email = os.environ.get('DAYFLOW_FROM_EMAIL') or 'no-reply@dayflow.com'
+    smtp_host = os.environ.get('DAYFLOW_SMTP_HOST') or os.environ.get('SMTP_HOST') or os.environ.get('SMTP_SERVER')
+    smtp_port = int(os.environ.get('DAYFLOW_SMTP_PORT') or os.environ.get('SMTP_PORT') or 587)
+    smtp_user = os.environ.get('DAYFLOW_SMTP_USER') or os.environ.get('SMTP_USER')
+    smtp_pass = os.environ.get('DAYFLOW_SMTP_PASS') or os.environ.get('SMTP_PASS') or os.environ.get('SMTP_PASSWORD')
+    from_email = os.environ.get('DAYFLOW_FROM_EMAIL') or os.environ.get('FROM_EMAIL') or (smtp_user if smtp_user else 'no-reply@dayflow.com')
 
+    sent_via_smtp = False
     if smtp_host and smtp_user and smtp_pass:
         try:
             msg = MIMEMultipart()
@@ -43,29 +44,29 @@ def send_email_otp(recipient_email, otp_code, recipient_name="User"):
 
 Your Dayflow account verification code is: {otp_code}
 
-This code is valid for 10 minutes. Please enter it to complete your registration.
-If you did not request this, please ignore this email.
+This code is valid for 10 minutes. Please enter it on the registration page to activate your account.
+If you did not request this code, please ignore this email.
 
 Best regards,
-Dayflow HRMS Team
+Dayflow HRMS Security Team
 """
             msg.attach(MIMEText(body_text, 'plain'))
             with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
                 server.starttls()
                 server.login(smtp_user, smtp_pass)
                 server.send_message(msg)
-            _logger.info("Email OTP successfully delivered to %s", recipient_email)
-            return True
+            _logger.info("Email OTP successfully delivered to %s via %s", recipient_email, smtp_host)
+            sent_via_smtp = True
         except Exception as e:
             _logger.error("Failed to send SMTP email to %s: %s", recipient_email, str(e))
 
     # Safe development fallback output
-    print(f"\n" + "="*60)
+    print(f"\n" + "="*65)
     print(f" [DAYFLOW SECURITY OTP] Recipient: {recipient_email}")
     print(f" >>> 6-DIGIT VERIFICATION OTP: {otp_code} <<<")
-    print(f" Valid for 10 minutes (expires at: {time.strftime('%H:%M:%S', time.localtime(time.time() + OTP_EXPIRY_SECONDS))})")
-    print("="*60 + "\n")
-    return True
+    print(f" Status: {'Delivered via SMTP' if sent_via_smtp else 'Dev Mode (No SMTP Configured)'}")
+    print("="*65 + "\n")
+    return sent_via_smtp
 
 
 class DayflowAuthController(http.Controller):
@@ -105,10 +106,15 @@ class DayflowAuthController(http.Controller):
             'last_sent': now,
         }
 
-        send_email_otp(email, otp_code, name)
+        sent = send_email_otp(email, otp_code, name)
+        if sent:
+            msg = f"6-digit verification code sent to your email inbox ({email})."
+        else:
+            msg = f"Verification code generated! (Dev Mode: Code is {otp_code} — enter it below or check server terminal)."
 
         return json_response(
-            message=f"Verification OTP sent to {email}. Valid for 10 minutes."
+            data={'dev_otp': otp_code, 'sent_via_smtp': sent},
+            message=msg
         )
 
     @http.route('/api/auth/verify-otp', type='http', auth='none', methods=['POST', 'OPTIONS'], csrf=False, cors='*')

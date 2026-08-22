@@ -183,7 +183,6 @@ async function handleSignupStep1(event) {
 
     btn.disabled = false;
     btn.textContent = "Get Verification OTP →";
-
     if (res.success || res.fallback) {
         pendingSignupData = { name, employee_code: employeeId, email, password, role };
         localStorage.setItem("pending_verification_email", email);
@@ -192,8 +191,21 @@ async function handleSignupStep1(event) {
         document.getElementById("signupStepDetails").classList.add("hidden");
         document.getElementById("signupStepOtp").classList.remove("hidden");
         document.getElementById("displayOtpEmail").textContent = email;
-        document.getElementById("signupOtp").focus();
 
+        const otpSuccess = document.getElementById("otpSuccess");
+        if (res.data && res.data.dev_otp && !res.data.sent_via_smtp) {
+            if (otpSuccess) {
+                otpSuccess.textContent = `💡 Dev Mode Code: ${res.data.dev_otp} (or check server terminal)`;
+            }
+            const otpInput = document.getElementById("signupOtp");
+            if (otpInput) {
+                otpInput.value = res.data.dev_otp;
+            }
+        } else if (otpSuccess) {
+            otpSuccess.textContent = res.message || `Verification code sent to ${email}.`;
+        }
+
+        document.getElementById("signupOtp").focus();
         startOtpTimer(45);
     } else {
         error.textContent = res.message || "Failed to send verification OTP. Please try again.";
@@ -248,25 +260,21 @@ async function handleSignupStep2(event) {
             email: pendingSignupData.email,
             password: pendingSignupData.password,
             role: pendingSignupData.role,
-            is_verified: true,
-            basic_salary: pendingSignupData.role === "hr" ? 60000 : 35000,
-            hra: pendingSignupData.role === "hr" ? 15000 : 8000,
-            allowances: pendingSignupData.role === "hr" ? 6000 : 4000,
-            deductions: 2000
+            is_verified: true
         });
         localStorage.setItem("dayflow_users", JSON.stringify(users));
-        otpSuccess.textContent = "🎉 Account verified & activated! Redirecting...";
+        otpSuccess.textContent = "🎉 Account verified & created successfully! Redirecting to Sign In...";
         setTimeout(() => {
             window.location.href = "index.html";
         }, 1200);
     } else {
-        otpError.textContent = res.message || "Invalid or expired verification code.";
+        otpError.textContent = res.message || "Invalid or expired OTP. Please try again.";
     }
 }
 
 function startOtpTimer(seconds) {
     const btnResend = document.getElementById("btnResendOtp");
-    const timerText = document.getElementById("otpTimerText");
+    const timerText = document.getElementById("otpTimer");
     if (!btnResend) return;
 
     btnResend.disabled = true;
@@ -292,9 +300,15 @@ async function resendSignupOtp() {
     otpError.textContent = "";
     otpSuccess.textContent = "Sending new verification code...";
 
-    const res = await apiFetch('/api/auth/send-otp', 'POST', { email: pendingSignupData.email, name: pendingSignupData.name });
+    const res = await apiFetch('/api/auth/resend-otp', 'POST', { email: pendingSignupData.email, name: pendingSignupData.name });
     if (res.success || res.fallback) {
-        otpSuccess.textContent = "A fresh 6-digit code has been sent to your email.";
+        if (res.data && res.data.dev_otp && !res.data.sent_via_smtp) {
+            otpSuccess.textContent = `💡 Dev Mode: New 6-digit code is ${res.data.dev_otp} (or check server terminal)`;
+            const otpInput = document.getElementById("signupOtp");
+            if (otpInput) otpInput.value = res.data.dev_otp;
+        } else {
+            otpSuccess.textContent = res.message || "A fresh 6-digit code has been sent to your email.";
+        }
         startOtpTimer(45);
     } else {
         otpError.textContent = res.message || "Failed to resend code.";

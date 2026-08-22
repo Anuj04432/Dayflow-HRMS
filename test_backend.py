@@ -12,10 +12,14 @@ Usage:
 """
 
 import sys
+import os
 import json
 import uuid
 import time
 import random
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from datetime import datetime, date
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 import urllib.request
@@ -24,6 +28,49 @@ import urllib.error
 
 # Server-side OTP store
 OTP_STORE = {}
+
+def send_smtp_email(recipient_email, otp_code, recipient_name="User"):
+    """Sends OTP to recipient email using SMTP if configured, or prints cleanly to dev console."""
+    smtp_host = os.environ.get('DAYFLOW_SMTP_HOST') or os.environ.get('SMTP_HOST') or os.environ.get('SMTP_SERVER')
+    smtp_port = int(os.environ.get('DAYFLOW_SMTP_PORT') or os.environ.get('SMTP_PORT') or 587)
+    smtp_user = os.environ.get('DAYFLOW_SMTP_USER') or os.environ.get('SMTP_USER')
+    smtp_pass = os.environ.get('DAYFLOW_SMTP_PASS') or os.environ.get('SMTP_PASS') or os.environ.get('SMTP_PASSWORD')
+    from_email = os.environ.get('DAYFLOW_FROM_EMAIL') or os.environ.get('FROM_EMAIL') or (smtp_user if smtp_user else 'no-reply@dayflow.com')
+
+    sent_via_smtp = False
+    if smtp_host and smtp_user and smtp_pass:
+        try:
+            msg = MIMEMultipart()
+            msg['From'] = f"Dayflow HRMS <{from_email}>"
+            msg['To'] = recipient_email
+            msg['Subject'] = f"{otp_code} is your Dayflow HRMS Verification Code"
+
+            body_text = f"""Hello {recipient_name},
+
+Your Dayflow account verification code is: {otp_code}
+
+This code will expire in 10 minutes. Please enter it to complete your registration.
+If you did not request this code, please ignore this email.
+
+Best regards,
+Dayflow HRMS Security Team
+"""
+            msg.attach(MIMEText(body_text, 'plain'))
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
+                server.starttls()
+                server.login(smtp_user, smtp_pass)
+                server.send_message(msg)
+            sent_via_smtp = True
+            print(f"[SMTP DELIVERED] Verification email sent to {recipient_email} via {smtp_host}")
+        except Exception as e:
+            print(f"[SMTP WARNING] Failed to deliver email to {recipient_email}: {e}")
+
+    print(f"\n" + "="*65)
+    print(f" [DAYFLOW SECURITY OTP] Recipient: {recipient_email}")
+    print(f" >>> 6-DIGIT VERIFICATION OTP: {otp_code} <<<")
+    print(f" Status: {'Delivered via SMTP' if sent_via_smtp else 'Dev Mode (No SMTP Configured)'}")
+    print("="*65 + "\n")
+    return sent_via_smtp
 
 # In-memory mock database
 DB = {
@@ -374,8 +421,12 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
                 'verified': False,
                 'last_sent': now
             }
-            print(f"\n[DEV SERVER SECURITY] Generated 6-digit OTP for {email}: {otp} (expires in 10 mins)\n")
-            return self._send_json(message=f"6-digit verification code sent to {email}.")
+            sent = send_smtp_email(email, otp, name)
+            if sent:
+                msg = f"6-digit verification code sent to your email inbox ({email})."
+            else:
+                msg = f"Verification code generated! (Dev Mode: Code is {otp} — enter it below or check server terminal)."
+            return self._send_json(data={'dev_otp': otp, 'sent_via_smtp': sent}, message=msg)
 
         elif path == '/api/auth/verify-otp':
             email = (body.get('email') or '').strip().lower()
@@ -404,8 +455,12 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
             email = (body.get('email') or '').strip().lower()
             otp = f"{random.randint(100000, 999999)}"
             OTP_STORE[email] = {'otp': otp, 'expires_at': time.time() + 600, 'attempts': 0, 'verified': False, 'last_sent': time.time()}
-            print(f"\n[DEV SERVER SECURITY] Resent 6-digit OTP for {email}: {otp}\n")
-            return self._send_json(message=f"New 6-digit verification code sent to {email}.")
+            sent = send_smtp_email(email, otp, "User")
+            if sent:
+                msg = f"New 6-digit verification code sent to your email inbox ({email})."
+            else:
+                msg = f"New code generated! (Dev Mode: Code is {otp} — enter it below or check server terminal)."
+            return self._send_json(data={'dev_otp': otp, 'sent_via_smtp': sent}, message=msg)
 
         elif path == '/api/auth/signup':
             email = body.get('email', '').strip().lower()
