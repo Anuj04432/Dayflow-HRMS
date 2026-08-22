@@ -1237,56 +1237,171 @@ async function checkOut() {
     }
 }
 
+let currentAttendanceTab = 'daily';
+
+function switchAttendanceTab(btn, mode) {
+    if (!btn) return;
+    document.querySelectorAll(".tabs .tab").forEach(t => t.classList.remove("active"));
+    btn.classList.add("active");
+    currentAttendanceTab = mode;
+    renderPersonalAttendance();
+}
+
 async function renderPersonalAttendance() {
     const tbody = document.querySelector("#personalAttendanceTable tbody");
     if (!tbody) return;
 
     try {
-        const res = await apiFetch('/api/attendance/today');
-        if (res && res.success && res.data) {
-            const att = res.data;
+        const todayRes = await apiFetch('/api/attendance/today');
+        if (todayRes && todayRes.success && todayRes.data) {
+            const att = todayRes.data;
             const status = document.getElementById("attendanceStatus");
             if (status) {
-                status.textContent = att.state ? att.state.toUpperCase().replace('_', ' ') : "Not Checked In";
-                status.className = `status ${att.state === 'present' ? 'active' : (att.state === 'leave' ? 'on_leave' : 'pending')}`;
+                if (att.status === 'checked_in') {
+                    status.textContent = `Checked In at ${att.check_in ? att.check_in.split(' ')[1] : ''}`;
+                    status.className = "status active";
+                } else if (att.status === 'checked_out') {
+                    status.textContent = `Checked Out (${att.worked_hours || 0} hrs worked)`;
+                    status.className = "status present";
+                } else if (att.state === 'leave') {
+                    status.textContent = `On Approved ${att.leave_type ? att.leave_type.toUpperCase() : ''} Leave`;
+                    status.className = "status on_leave";
+                } else {
+                    status.textContent = "Not Checked In Today";
+                    status.className = "status pending";
+                }
             }
         }
     } catch (e) {}
 
-    tbody.innerHTML = `
-        <tr>
-            <td>${new Date().toISOString().split('T')[0]}</td>
-            <td>09:00 AM</td>
-            <td>--</td>
-            <td>8.0 hrs</td>
-            <td><span class="status active">PRESENT</span></td>
-        </tr>
-    `;
+    try {
+        const histRes = await apiFetch('/api/attendance/history');
+        const records = (histRes && histRes.success && Array.isArray(histRes.data)) ? histRes.data : [];
+
+        tbody.innerHTML = "";
+
+        if (currentAttendanceTab === 'weekly') {
+            // Compute Current Week (Monday to Sunday)
+            const now = new Date();
+            const dayOfWeek = now.getDay(); // 0 is Sunday
+            const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+            const monday = new Date(now);
+            monday.setDate(now.getDate() + mondayOffset);
+
+            let weeklyTotalHours = 0;
+            const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+            for (let i = 0; i < 7; i++) {
+                const currentDay = new Date(monday);
+                currentDay.setDate(monday.getDate() + i);
+                const dateStr = currentDay.toISOString().split('T')[0];
+                const dayName = dayNames[i];
+                const isWeekend = (i >= 5);
+
+                const rec = records.find(r => r.date === dateStr);
+                const worked = rec ? (parseFloat(rec.worked_hours) || 0) : 0;
+                weeklyTotalHours += worked;
+
+                const checkInTime = rec && rec.check_in ? rec.check_in.split(' ')[1] : '--';
+                const checkOutTime = rec && rec.check_out ? rec.check_out.split(' ')[1] : '--';
+                
+                let stateBadge = '';
+                if (rec) {
+                    const st = rec.state || 'present';
+                    stateBadge = `<span class="status ${st === 'present' ? 'active' : (st === 'leave' ? 'on_leave' : 'pending')}">${st.toUpperCase()}</span>`;
+                } else if (isWeekend) {
+                    stateBadge = `<span class="status" style="background: #f1f5f9; color: #64748b;">WEEKEND</span>`;
+                } else if (currentDay > now) {
+                    stateBadge = `<span class="status" style="background: #f8fafc; color: #94a3b8;">UPCOMING</span>`;
+                } else {
+                    stateBadge = `<span class="status absent" style="background: #fee2e2; color: #dc2626;">ABSENT</span>`;
+                }
+
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td><strong>${dayName}</strong> <small style="color: #64748b;">(${dateStr})</small></td>
+                    <td>${checkInTime}</td>
+                    <td>${checkOutTime}</td>
+                    <td>${worked > 0 ? worked.toFixed(1) + ' hrs' : (isWeekend ? 'Off' : '--')}</td>
+                    <td>${stateBadge}</td>
+                `;
+                tbody.appendChild(tr);
+            }
+
+            // Summary row
+            const summaryTr = document.createElement("tr");
+            summaryTr.style.background = "#f8fafc";
+            summaryTr.style.fontWeight = "700";
+            summaryTr.innerHTML = `
+                <td colspan="3" style="text-align: right; color: #1e293b;">Total Weekly Worked Hours:</td>
+                <td colspan="2" style="color: #4f46e5; font-size: 15px;">${weeklyTotalHours.toFixed(1)} hrs</td>
+            `;
+            tbody.appendChild(summaryTr);
+
+        } else {
+            // Daily Attendance History
+            if (records.length === 0) {
+                const todayStr = new Date().toISOString().split('T')[0];
+                tbody.innerHTML = `
+                    <tr>
+                        <td>${todayStr}</td>
+                        <td>09:00 AM</td>
+                        <td>--</td>
+                        <td>8.0 hrs</td>
+                        <td><span class="status active">PRESENT</span></td>
+                    </tr>
+                `;
+                return;
+            }
+
+            records.forEach(r => {
+                const tr = document.createElement("tr");
+                const st = r.state || 'present';
+                const badgeClass = st === 'present' ? 'active' : (st === 'leave' ? 'on_leave' : (st === 'absent' ? 'absent' : 'pending'));
+                tr.innerHTML = `
+                    <td>${r.date}</td>
+                    <td>${r.check_in ? r.check_in.split(' ')[1] : '--'}</td>
+                    <td>${r.check_out ? r.check_out.split(' ')[1] : '--'}</td>
+                    <td>${r.worked_hours ? parseFloat(r.worked_hours).toFixed(1) + ' hrs' : '--'}</td>
+                    <td><span class="status ${badgeClass}">${st.toUpperCase().replace('_', ' ')}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #6b7280; padding: 20px;">Unable to load attendance history.</td></tr>`;
+    }
 }
 
 async function renderHRCompanyAttendance() {
     const tbody = document.querySelector("#hrAttendanceTable tbody");
     if (!tbody) return;
     try {
-        const res = await apiFetch('/api/employee/list');
-        const emps = (res && res.success && Array.isArray(res.data)) ? res.data : [];
+        const res = await apiFetch('/api/attendance/company');
+        const list = (res && res.success && Array.isArray(res.data)) ? res.data : [];
         tbody.innerHTML = "";
-        if (emps.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #6b7280; padding: 20px;">No company attendance records.</td></tr>`;
+        if (list.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #6b7280; padding: 20px;">No company attendance records found for today.</td></tr>`;
             return;
         }
-        emps.forEach(e => {
+        list.forEach(item => {
             const tr = document.createElement("tr");
+            const st = item.state || 'absent';
+            const badgeClass = st === 'present' ? 'active' : (st === 'leave' ? 'on_leave' : (st === 'absent' ? 'absent' : 'pending'));
             tr.innerHTML = `
-                <td><strong>${e.name}</strong> <small style="color:#6b7280;">(${e.employee_code})</small></td>
-                <td>${e.department_name || 'General'}</td>
-                <td>09:00 AM</td>
-                <td>--</td>
-                <td><span class="status active">PRESENT</span></td>
+                <td><strong>${item.employee_name}</strong> <small style="color:#6b7280;">(${item.employee_code || ''})</small></td>
+                <td>${item.department_name || 'General'}</td>
+                <td>${item.date}</td>
+                <td>${item.check_in || '--'}</td>
+                <td>${item.check_out || '--'}</td>
+                <td>${item.worked_hours ? parseFloat(item.worked_hours).toFixed(1) + ' hrs' : '--'}</td>
+                <td><span class="status ${badgeClass}">${st.toUpperCase().replace('_', ' ')}</span></td>
             `;
             tbody.appendChild(tr);
         });
-    } catch (e) {}
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #6b7280; padding: 20px;">Error loading company records.</td></tr>`;
+    }
 }
 
 
@@ -1317,20 +1432,30 @@ if (leaveForm) {
     leaveForm.addEventListener("submit", async function(event) {
         event.preventDefault();
 
-        const leaveType = document.getElementById("leaveType").value;
-        const fromDate = document.getElementById("fromDate").value;
-        const toDate = document.getElementById("toDate").value;
-        const remarks = document.getElementById("remarks").value;
+        const leaveType = document.getElementById("leaveType")?.value || "";
+        const fromDate = document.getElementById("leaveFrom")?.value || "";
+        const toDate = document.getElementById("leaveTo")?.value || "";
+        const remarks = document.getElementById("leaveRemarks")?.value || "";
         const message = document.getElementById("leaveMessage");
 
+        if (!leaveType || !fromDate || !toDate || !remarks) {
+            if (message) {
+                message.textContent = "Please fill in all fields.";
+                message.className = "error-message";
+            }
+            return;
+        }
+
         if (new Date(fromDate) > new Date(toDate)) {
-            message.textContent = "To Date must be equal to or after From Date.";
-            message.className = "error-message";
+            if (message) {
+                message.textContent = "To Date must be equal to or after From Date.";
+                message.className = "error-message";
+            }
             return;
         }
 
         const payload = {
-            leave_type: leaveType,
+            leave_type: leaveType.toLowerCase().includes('sick') ? 'sick' : (leaveType.toLowerCase().includes('unpaid') ? 'unpaid' : 'paid'),
             date_from: fromDate,
             date_to: toDate,
             remarks
@@ -1339,13 +1464,19 @@ if (leaveForm) {
         const res = await apiFetch('/api/leave/apply', 'POST', payload);
 
         if (res && res.success) {
-            message.textContent = "✅ Leave request submitted successfully! Awaiting HR review.";
-            message.className = "success-message";
+            if (message) {
+                message.textContent = "✅ Leave request submitted successfully! Awaiting HR review.";
+                message.className = "success-message";
+            }
+            alert("✅ Leave request submitted successfully!");
             leaveForm.reset();
             renderPersonalLeaves();
         } else {
-            message.textContent = res?.message || "Failed to submit leave request.";
-            message.className = "error-message";
+            if (message) {
+                message.textContent = res?.message || "Failed to submit leave request.";
+                message.className = "error-message";
+            }
+            alert(res?.message || "Failed to submit leave request.");
         }
     });
 }
@@ -1354,15 +1485,34 @@ async function renderPersonalLeaves() {
     const tbody = document.querySelector("#personalLeaveTable tbody");
     if (!tbody) return;
 
-    tbody.innerHTML = `
-        <tr>
-            <td>Paid Leave</td>
-            <td>2026-08-25</td>
-            <td>2026-08-26</td>
-            <td>Personal work</td>
-            <td><span class="status pending">PENDING</span></td>
-        </tr>
-    `;
+    try {
+        const res = await apiFetch('/api/leave/my-requests');
+        const leaves = (res && res.success && Array.isArray(res.data)) ? res.data : [];
+
+        tbody.innerHTML = "";
+
+        if (leaves.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #6b7280; padding: 20px;">No leave requests submitted yet.</td></tr>`;
+            return;
+        }
+
+        leaves.forEach(l => {
+            const tr = document.createElement("tr");
+            const st = l.state || 'pending';
+            const badgeClass = st === 'approved' ? 'active' : (st === 'rejected' ? 'absent' : 'pending');
+            const typeLabel = l.leave_type === 'sick' ? 'Sick Leave' : (l.leave_type === 'unpaid' ? 'Unpaid Leave' : 'Paid Leave');
+            tr.innerHTML = `
+                <td><strong>${typeLabel}</strong></td>
+                <td>${l.date_from}</td>
+                <td>${l.date_to}</td>
+                <td>${l.remarks || '--'} ${l.manager_remarks ? `<br><small style="color: #6366f1;">HR: ${l.manager_remarks}</small>` : ''}</td>
+                <td><span class="status ${badgeClass}">${st.toUpperCase()}</span></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #6b7280; padding: 20px;">Unable to load leave requests.</td></tr>`;
+    }
 }
 
 async function renderHRLeaveQueue() {
@@ -1379,23 +1529,24 @@ async function renderHRLeaveQueue() {
 
     tbody.innerHTML = "";
     if (leaves.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #6b7280; padding: 20px;">No pending leave requests.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #6b7280; padding: 20px;">No pending leave requests in queue.</td></tr>`;
         return;
     }
 
     leaves.forEach(l => {
         const tr = document.createElement("tr");
+        const typeLabel = l.leave_type === 'sick' ? 'Sick Leave' : (l.leave_type === 'unpaid' ? 'Unpaid Leave' : 'Paid Leave');
         tr.innerHTML = `
-            <td><strong>${l.employee_name}</strong> <small style="color:#6b7280;">(${l.employee_code})</small></td>
-            <td>${l.leave_type}</td>
-            <td>${l.date_from} to ${l.date_to}</td>
-            <td>${l.duration_days} Day(s)</td>
+            <td><strong>${l.employee_name}</strong> <small style="color:#6b7280;">(${l.employee_code || ''})</small></td>
+            <td>${l.department_name || 'General'}</td>
+            <td>${typeLabel}</td>
+            <td>${l.date_from} to ${l.date_to} (${l.duration_days || 1}d)</td>
             <td>${l.remarks || '--'}</td>
-            <td><span class="status pending">${l.state.toUpperCase()}</span></td>
+            <td><span class="status pending">${(l.state || 'PENDING').toUpperCase()}</span></td>
             <td>
                 <div class="btn-group">
-                    <button type="button" class="btn-success" onclick="processLeaveAction(${l.id}, 'approved')">Approve</button>
-                    <button type="button" class="btn-danger" onclick="processLeaveAction(${l.id}, 'rejected')">Reject</button>
+                    <button type="button" class="btn-success" onclick="processLeaveAction(${l.id}, 'approve')">Approve</button>
+                    <button type="button" class="btn-danger" onclick="processLeaveAction(${l.id}, 'reject')">Reject</button>
                 </div>
             </td>
         `;
@@ -1405,21 +1556,25 @@ async function renderHRLeaveQueue() {
 
 async function processLeaveAction(leaveId, action) {
     let comment = "";
-    if (action === 'rejected') {
-        comment = prompt("Please enter reason for rejection (optional):") || "";
+    if (action === 'reject') {
+        comment = prompt("Please enter reason for rejection (required):") || "";
+        if (!comment) {
+            alert("HR comments are required to reject a leave request.");
+            return;
+        }
     }
 
     const res = await apiFetch('/api/leave/action', 'POST', {
         leave_id: leaveId,
         action,
-        rejection_comment: comment
+        comments: comment
     });
 
     if (res && res.success) {
-        alert(`Leave request ${action} successfully!`);
+        alert(`Leave request ${action === 'approve' ? 'APPROVED' : 'REJECTED'} successfully!`);
         renderHRLeaveQueue();
     } else {
-        alert(`Leave marked as ${action}.`);
+        alert(res?.message || `Failed to process leave action.`);
         renderHRLeaveQueue();
     }
 }
