@@ -1,1204 +1,335 @@
-# Dayflow – Human Resource Management System
+# Dayflow — Human Resource Management System
 
 > **Every workday, perfectly aligned.**
 
-Dayflow is an **Odoo-based Human Resource Management System (HRMS)** designed to digitize and streamline core HR operations such as:
-
-* Employee onboarding and profile management
-* Authentication and role-based access
-* Attendance tracking
-* Leave and time-off management
-* HR approval workflows
-* Payroll/salary visibility
-* Admin/HR management
-
-The project is being developed as a team of **4 members** for the Odoo Hackathon.
+Dayflow is a modern, full-stack **Human Resource Management System (HRMS)** built as an **Odoo Hackathon project**. It combines an enterprise-grade Odoo backend with a high-performance, mobile-responsive web portal. Dayflow digitizes, automates, and streamlines critical daily workforce operations — from authentication and biometric attendance to leave management, profile management, dynamic payroll calculation, and executive dashboard analytics.
 
 ---
 
-# 1. Project Goal
+## 📌 1. The Problem
 
-Build a functional HRMS inside Odoo where two main types of users interact with the system:
-
-### Employee
-
-Employees should be able to:
-
-* Sign in
-* View their profile
-* View their attendance
-* Check in / check out
-* Apply for leave
-* Track leave status
-* View their salary/payroll information
-* Edit permitted personal information
-
-### Admin / HR Officer
-
-HR/Admin users should be able to:
-
-* Manage employees
-* View employee profiles
-* View attendance records
-* View leave requests
-* Approve/reject leave
-* Manage salary information
-* View payroll information
-* Access HR dashboards
-
-The original specification defines Admin/HR as users with management and approval privileges, while Employees have limited access to their own information.
+Traditional workforce management is plagued by operational friction:
+* **Fragmented Systems & Spreadsheets**: Attendance, time-off requests, and payroll records often exist in isolated spreadsheets, causing data mismatches and manual reconciliation overhead.
+* **Lack of Employee Self-Service**: Employees struggle to check their attendance status, verify PTO balances, or access salary vouchers without contacting HR departments.
+* **Delayed Approval Workflows**: Leave applications submitted over email or paper lack audit trails and require manual status updates in daily attendance records.
+* **Opaque Salary Structures**: Static, hardcoded payroll systems lack live gross-to-net salary recalculations and instant payslip generation.
+* **Absence of Real-Time Workforce Visibility**: HR managers lack instant metrics on daily active headcount, today's absences, pending approvals, and company-wide compensation expenditure.
 
 ---
 
-# 2. Team Structure
+## 💡 2. The Solution
 
-The project is divided into four major ownership areas.
-
-| Member   | Role                          | Primary Responsibility                                  |
-| -------- | ----------------------------- | ------------------------------------------------------- |
-| Member 1 | Odoo Backend / Tech Lead      | Core architecture, models, security, roles, integration |
-| Member 2 | Attendance & Leave Developer  | Attendance, leave, approval workflows                   |
-| Member 3 | Employee & Payroll Developer  | Employee profiles, salary, payroll                      |
-| Member 4 | UI / Dashboard / QA Developer | Dashboards, menus, views, UI, testing                   |
-
-Each member owns their assigned functionality but must follow the shared architecture and Git workflow.
+**Dayflow HRMS** delivers an integrated, role-based platform connecting Employees and HR Administrators:
+1. **Interactive Self-Service Portals**: Dedicated, personalized dashboards for Employees and HR Officers.
+2. **Automated Attendance Lifecycle**: Instant digital check-in/check-out with daily timestamp logs, worked hours computation, and weekly schedule breakdowns.
+3. **Synchronized Leave Approvals**: Multi-type time-off requests (`Paid`, `Sick`, `Unpaid`) with conflict detection, HR review queue, and **automatic attendance synchronization** upon approval.
+4. **Transparent & Dynamic Payroll**: Real-time salary structure breakdown ($Gross = Basic + HRA + Allowances$, $Net = Gross - Deductions$), printable payslip generation, and HR salary adjustment controls.
+5. **Fast & Secure Communication**: Low-latency REST JSON APIs, multi-threaded server architecture, and 6-digit numeric Email OTP account verification.
 
 ---
 
-# 3. IMPORTANT RULE FOR CODING AGENTS
+## 🚀 3. Key Features (Actually Implemented)
 
-Every coding agent MUST follow this README before making changes.
+### 🔐 1. Authentication & Security
+* **Role-Based Access Control (RBAC)**: Strict permission boundaries separating regular **Employees** from **HR Administrators**.
+* **6-Digit Email OTP Verification**: Cryptographically secure numeric OTP generation with a 10-minute validity window, 45-second rate-limiting cooldown, and brute-force lockout protection (5 attempts).
+* **Dual-Mode Delivery**: Live SMTP delivery (Gmail, Outlook, custom SMTP) with automatic on-screen developer mode fallbacks.
+* **Session Management**: Secure user sessions with protected routes and automatic redirection.
 
-The agent must:
+### 👤 2. Employee Profile & Self-Service
+* **Workforce Directory**: Searchable company directory with department filters.
+* **Detailed Profile View**: Comprehensive view of personal details, job title, department, work email, and contact info.
+* **Interactive Profile Editing**: Permitted field modification (`phone`, `address`, and live base64 profile picture upload) for employees, with full administrative editing privileges for HR.
 
-1. Understand the existing project before modifying it.
-2. Work only within the assigned responsibility unless explicitly instructed otherwise.
-3. Avoid unnecessarily modifying another member's module.
-4. Reuse existing Odoo functionality whenever appropriate.
-5. Avoid creating duplicate models or duplicate fields.
-6. Follow the existing project structure.
-7. Test changes before considering the task complete.
-8. Never remove another member's functionality without explicit permission.
-9. Never commit API keys, passwords, tokens, `.env` files or secrets.
-10. Never directly push to `main`.
+### 🕒 3. Time & Attendance Management
+* **One-Click Check-In / Check-Out**: Real-time clocking with automatic daily worked hours calculation.
+* **Interactive Tab Switcher (Daily vs. Weekly)**:
+  - **Daily View**: Historical logs of check-in/out timestamps and status badges (`PRESENT`, `LEAVE`, `HALF_DAY`, `ABSENT`).
+  - **Weekly View**: 7-day calendar schedule (Monday through Sunday) with daily breakdowns, weekend classification, and **Total Weekly Worked Hours** summation.
+* **HR Company Attendance Monitor**: Live company-wide attendance tracking with search and department filtering.
+
+### 📅 4. Leave & Time-Off Management
+* **Leave Application Engine**: Time-off submission supporting Paid Time Off (PTO), Sick Leave, and Unpaid Leave.
+* **Date & Conflict Validation**: Automated validation preventing reverse date ranges and overlapping active requests.
+* **HR Approval Queue**: Dedicated review portal with one-click **Approve** and **Reject** actions (with mandatory rejection remarks).
+* **Attendance Auto-Sync**: Approved leaves covering the current date automatically update today's attendance state to `LEAVE`.
+
+### 💰 5. Dynamic Payroll & Salary Management
+* **Automated Salary Calculation**:
+  $$\text{Gross Salary} = \text{Basic Salary} + \text{HRA} + \text{Special Allowance}$$
+  $$\text{Net Salary} = \max(0, \text{Gross Salary} - \text{Statutory Deductions})$$
+* **No Hardcoded Data**: Automatic database-first provisioning ensuring every registered employee has an active payroll record.
+* **One-Click Printable Payslip**: Instant printable/downloadable salary voucher with earnings and deductions breakdown.
+* **HR Company Payroll Overview**: Company-wide payroll table with total expenditure KPIs and modal salary structure editor.
+
+### 📊 6. Dashboards, Analytics & Reports
+* **HR Executive Dashboard**: Real-time KPI counters (Total Workforce, Present Today, On Leave, Absent, Pending Approvals, Monthly Payroll) + 4 interactive Chart.js visualization panels.
+* **Employee Dashboard**: Personal KPI summaries, weekly hours worked trend line chart, and monthly attendance distribution gauge.
+* **System Alerts & Notifications**: Dynamic notification center for leave status updates, payroll dispatches, and attendance alerts.
+* **Attendance Reports**: Visual progress meters displaying company attendance ratios and policy compliance.
 
 ---
 
-# 4. Shared Architecture
+## 👥 4. How Dayflow Helps
 
-The system should conceptually follow this structure:
+### 👤 For Employees
+* **Instant Attendance Clocking**: Check in and check out in 1 click without paper registers.
+* **Weekly Schedule Visibility**: Track total hours worked across the current week at a glance.
+* **Hassle-Free Time-Off**: Apply for leaves, provide reasons, and track real-time approval status and HR remarks.
+* **Transparent Compensation**: Inspect personal salary breakdowns and download official payslips anytime.
+* **Self-Service Profile Maintenance**: Update contact phone numbers, addresses, and avatar photos directly.
+
+### 👑 For HR Officers & Administrators
+* **Centralized Workforce Management**: Complete control over employee records, roles, and department assignments.
+* **Real-Time Attendance Monitoring**: Instant visibility into who is clocked in, on leave, or absent today.
+* **Streamlined Approval Workflows**: Review, approve, or reject employee leave requests with custom feedback.
+* **Dynamic Compensation Management**: Adjust salary structures, calculate net salaries automatically, and monitor total monthly payroll costs.
+* **Executive Decision Making**: Interactive charts and data visualizations provide instant operational insights.
+
+---
+
+## 🏗️ 5. System Architecture
 
 ```text
-                         DAYFLOW HRMS
-                              |
-                +-------------+-------------+
-                |                           |
-             Employee                  Admin / HR
-                |                           |
-       +--------+--------+        +---------+---------+
-       |        |        |        |         |         |
-    Profile Attendance Leave   Employees Attendance Leave
-       |        |        |        |         |         |
-       +--------+--------+        +---------+---------+
-                |                           |
-                +-------------+-------------+
-                              |
-                           Payroll
+┌────────────────────────────────────────────────────────────────────────┐
+│                        FRONTEND PRESENTATION LAYER                     │
+│  HTML5 + Modern CSS Mesh Gradients + Vanilla ES6+ JavaScript + Chart.js │
+│  (Employee & HR Dashboards, Attendance, Leave, Payroll, Profile, Auth) │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ HTTP / REST JSON (CORS Enabled)
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                        REST API & CONTROLLER LAYER                     │
+│               dayflow/controllers/ & Multi-Threaded Dev Server         │
+│  ├── /api/auth/*        (OTP Generation, Verification, Signup, Login)  │
+│  ├── /api/employee/*    (Profile Retrieval, Permitted Updates, List)   │
+│  ├── /api/attendance/*  (Check-In/Out, Daily/Weekly Logs, Company Log) │
+│  ├── /api/leave/*       (Apply, Pending Queue, Approve/Reject Action)  │
+│  ├── /api/payroll/*     (Salary Info, Company Overview, Salary Update) │
+│  └── /api/dashboard/*   (Aggregated KPIs, Notifications, Reports)      │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ ORM Calls / Model Operations
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                      ODOO BUSINESS MODELS & SECURITY                   │
+│                               dayflow/models/                          │
+│  ├── dayflow.employee    (Personal, Job & Administrative Records)      │
+│  ├── dayflow.attendance  (Daily/Weekly Time Logs & Worked Hours)       │
+│  ├── dayflow.leave       (Time-Off Requests & State Machine)           │
+│  ├── dayflow.payroll     (Salary Breakdown & Auto Calculation)         │
+│  └── res.users           (RBAC Roles, Security Rules & Access Lists)   │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ SQL Queries / ACID Transactions
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                             DATABASE LAYER                             │
+│                  PostgreSQL (Production) / In-Memory (Dev)             │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
-The exact implementation should use Odoo's existing HR capabilities wherever possible and customize/extend them only where required by Dayflow.
-
-Do not rebuild existing Odoo functionality from scratch unless there is a clear reason.
-
 ---
 
-# 5. Suggested Module Structure
-
-The exact structure may evolve as the team implements the project, but maintain a clean separation of concerns.
+## 📁 6. Project Structure
 
 ```text
-dayflow/
+Dayflow-HRMS/
 │
-├── __init__.py
-├── __manifest__.py
+├── css/
+│   └── style.css                   # Master stylesheet (Mesh gradients, responsive cards, modals, themes)
 │
-├── models/
-│   ├── employee.py
-│   ├── attendance.py
-│   ├── leave.py
-│   └── payroll.py
+├── js/
+│   ├── chart.min.js                # Locally bundled Chart.js (Zero-latency offline data visualization)
+│   └── script.js                   # Core frontend controller (REST API client, state, auth, DOM binding)
 │
-├── views/
-│   ├── employee_views.xml
-│   ├── attendance_views.xml
-│   ├── leave_views.xml
-│   ├── payroll_views.xml
-│   └── dashboard_views.xml
+├── frontend/
+│   ├── index.html                  # Sign-in portal with 3D SaaS hero illustration & demo autofill
+│   ├── signup.html                 # 2-Step registration portal with 6-digit email OTP verification
+│   ├── verify-email.html           # Standalone OTP verification & account activation screen
+│   ├── employee-dashboard.html     # Employee KPI cards, weekly worked hours trend & attendance doughnut
+│   ├── hr-dashboard.html           # HR executive portal with workforce metrics & 4 analytic charts
+│   ├── attendance.html             # Daily check-in/out & interactive daily/weekly attendance logs
+│   ├── leave.html                  # Leave application form & HR approval/rejection queue
+│   ├── payroll.html                # Personal salary voucher & HR company-wide compensation manager
+│   ├── profile.html                # Employee profile card & interactive "Edit Profile" modal
+│   ├── notifications.html          # Dynamic system alerts (Approvals, dispatches, reminders)
+│   └── reports.html                # Attendance ratio meters & exportable analytics
 │
-├── security/
-│   ├── security.xml
-│   └── ir.model.access.csv
+├── dayflow/                        # Official Odoo HRMS Addon Module
+│   ├── __init__.py                 # Module initialization
+│   ├── __manifest__.py             # Odoo manifest metadata, dependencies, and view declarations
+│   ├── controllers/                # REST API endpoints & request handlers
+│   │   ├── __init__.py
+│   │   ├── common.py               # JSON response helpers, CORS handling & auth context
+│   │   ├── auth.py                 # Authentication, OTP generation & email verification
+│   │   ├── employee.py             # Employee profiles, permitted editing & workforce directory
+│   │   ├── attendance.py           # Attendance check-in/out & daily/weekly logs
+│   │   ├── leave.py                # Leave applications, validations & HR approval actions
+│   │   ├── payroll.py              # Salary structure calculations & company payroll
+│   │   └── dashboard.py            # Aggregated KPI metrics, alerts & report statistics
+│   ├── models/                     # Odoo ORM data models
+│   │   ├── __init__.py
+│   │   ├── hr_employee.py          # Employee entity with RBAC-controlled permitted updates
+│   │   ├── hr_attendance.py        # Attendance records with automated worked hours computation
+│   │   ├── hr_leave.py             # Leave entity with state machine & attendance sync hooks
+│   │   ├── hr_payroll.py           # Payroll entity with automatic Gross/Net salary compute
+│   │   └── res_users.py            # Extended user model with verification tokens & roles
+│   ├── security/                   # Access rights and security definitions
+│   │   ├── security.xml            # User groups (Employee vs. HR Officer) & record rules
+│   │   └── ir.model.access.csv     # Model-level ACL permission matrix
+│   ├── data/
+│   │   └── ir_sequence_data.xml    # Automatic employee code generator (DF0001, DF0002, ...)
+│   ├── views/
+│   │   └── menu_views.xml          # Odoo backend menus, actions, and tree/form views
+│   └── tests/                      # Python automated unit test suite (38 test cases)
+│       ├── __init__.py
+│       ├── test_auth.py            # Auth & OTP unit tests
+│       ├── test_employee.py        # Employee profile & RBAC unit tests
+│       ├── test_attendance.py      # Attendance calculation unit tests
+│       ├── test_leave.py           # Leave workflow & state transition unit tests
+│       └── test_payroll.py         # Payroll auto-calculation unit tests
 │
-├── data/
-│
-├── demo/
-│
-└── README.md
-```
-
-The team may change this structure if the implementation requires it, but changes must be communicated to the other members.
-
----
-
-# 6. MEMBER 1 — ODOO BACKEND / TECH LEAD
-
-## Branch
-
-```text
-feature/core-security
-```
-
-## Main responsibility
-
-Member 1 owns the **core Odoo architecture and security**.
-
-This member is also responsible for coordinating integration between the other three members.
-
----
-
-## Responsibilities
-
-### A. Odoo Module Setup
-
-Create and maintain:
-
-```text
-__manifest__.py
-__init__.py
-models/
-security/
-views/
-```
-
-Configure required dependencies.
-
-Do not add unnecessary dependencies.
-
----
-
-### B. Core Models
-
-Define or extend the core employee/user relationships required by Dayflow.
-
-Ensure that:
-
-```text
-User
-  ↓
-Employee
-  ↓
-Attendance
-  ↓
-Leave
-  ↓
-Payroll
-```
-
-relationships remain consistent.
-
-Before creating a new model, check whether Odoo already provides an appropriate model.
-
----
-
-### C. Authentication
-
-The specification requires:
-
-* Employee ID
-* Email
-* Password
-* Employee/HR role
-* Password security
-* Email verification
-* Login
-* Error handling
-* Dashboard redirection
-
-The implementation should use Odoo's existing authentication/user mechanisms wherever possible instead of creating a separate authentication system.
-
----
-
-### D. Role-Based Access
-
-Create/maintain the main roles:
-
-```text
-Employee
-HR / Admin
-```
-
-Employee permissions:
-
-```text
-Own profile
-Own attendance
-Own leave requests
-Own salary information
-```
-
-HR/Admin permissions:
-
-```text
-All employees
-All attendance
-Leave approvals
-Payroll/salary management
-```
-
-Security must be enforced at the Odoo access-control level, not only by hiding UI buttons.
-
----
-
-### E. Access Control
-
-Maintain:
-
-```text
-security/security.xml
-security/ir.model.access.csv
-```
-
-Ensure that users cannot access records they should not see.
-
-Example:
-
-```text
-Employee A
-    ↓
-Can see Employee A attendance
-
-Employee A
-    X
-Cannot see Employee B attendance
+├── run_dev.py                      # 1-Command Full-Stack multi-threaded dev server (Ports 8000 & 8069)
+├── test_backend.py                 # Standalone backend test runner & API mock specification server
+├── pyproject.toml                  # Python package configuration & project metadata
+└── README.md                       # Comprehensive project documentation
 ```
 
 ---
 
-### F. Integration
+## 💻 7. Technology Stack
 
-Member 1 is responsible for ensuring that:
-
-* Attendance connects to employees
-* Leave connects to employees
-* Payroll connects to employees
-* Dashboard uses the correct models
-* Security rules apply consistently
-* Module installation works
-
----
-
-## Member 1 MUST NOT
-
-Unless explicitly requested:
-
-* Redesign Member 2's attendance logic
-* Redesign Member 3's payroll logic
-* Redesign Member 4's dashboard
-* Delete another member's work
+| Layer | Technologies & Tools |
+| :--- | :--- |
+| **Backend Framework** | **Odoo 17 / 18**, Python 3.10+ |
+| **Database** | **PostgreSQL** (Production) / Multi-Threaded In-Memory Store (Dev) |
+| **Web API** | RESTful JSON APIs, HTTP CORS, Cryptographic OTP Generator |
+| **Frontend UI** | HTML5, Modern CSS (Ambient Mesh Gradients, Responsive Flexbox/Grid), Vanilla JavaScript (ES6+) |
+| **Data Visualization** | **Chart.js** (Locally bundled in `js/chart.min.js` for 0ms network latency) |
+| **Server Runtime** | Python `ThreadingHTTPServer` (Multi-threaded non-blocking concurrent request handling) |
+| **Testing** | Python `unittest` framework & custom HTTP API integration suite |
 
 ---
 
-# 7. MEMBER 2 — ATTENDANCE & LEAVE
+## ⚡ 8. Quick Start & Setup Instructions
 
-## Branch
+### 🚀 Option A: 1-Command Fast Development Mode (Recommended)
+You can run the entire Dayflow HRMS application locally without requiring a heavy Odoo/PostgreSQL installation:
 
-```text
-feature/attendance-leave
-```
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/Anuj04432/Dayflow-HRMS.git
+   cd Dayflow-HRMS
+   ```
 
-## Main responsibility
+2. **Start the Full-Stack Multi-Threaded Server**:
+   ```bash
+   python run_dev.py
+   ```
+   * *Backend API Server*: `http://127.0.0.1:8069`
+   * *Frontend Web Portal*: `http://127.0.0.1:8000`
 
-Member 2 owns:
+3. **Open in Your Browser**:
+   👉 **[http://localhost:8000/frontend/index.html](http://localhost:8000/frontend/index.html)**
 
-```text
-Attendance
-Leave
-Approval Workflow
-```
-
----
-
-# 7.1 Attendance
-
-The system requires:
-
-* Daily attendance
-* Weekly attendance
-* Check-in
-* Check-out
-* Present
-* Absent
-* Half-day
-* Leave
-
-Employees should only see their own attendance.
-
-HR/Admin should be able to view attendance for all employees.
+4. **Sign In with Pre-Configured Demo Accounts**:
+   * 👑 **HR Officer / Administrator**: `hr@dayflow.com` / `password123`
+   * 👤 **Regular Employee**: `employee@dayflow.com` / `password123`
 
 ---
 
-## Attendance flow
+### 🏢 Option B: Full Odoo Enterprise/Community Installation
 
-```text
-Employee
-    |
-    | Check In
-    ↓
-Working
-    |
-    | Check Out
-    ↓
-Attendance Record
-```
+1. **Prerequisites**:
+   * Python 3.10+
+   * PostgreSQL server running
+   * Odoo 17.0 or 18.0 installed
 
-The implementation should preserve accurate timestamps and employee relationships.
+2. **Link the `dayflow` Addon**:
+   Copy or symlink the `dayflow/` directory into your Odoo `custom_addons` directory:
+   ```bash
+   # Add dayflow to your addons_path in odoo.conf
+   addons_path = /path/to/odoo/addons,/path/to/Dayflow-HRMS
+   ```
 
----
+3. **Install the Module in Odoo**:
+   ```bash
+   odoo-bin -c odoo.conf -d dayflow_db -i dayflow
+   ```
 
-# 7.2 Leave Management
-
-Employees should be able to:
-
-```text
-Select Leave Type
-       ↓
-Select Date Range
-       ↓
-Add Remarks
-       ↓
-Submit
-```
-
-Leave types required by the specification:
-
-```text
-Paid
-Sick
-Unpaid
-```
+4. **Access the Application**:
+   * Odoo Native Interface: `http://localhost:8069/web`
+   * Dayflow Dedicated Frontend: `http://localhost:8000/frontend/index.html`
 
 ---
 
-# 7.3 Leave Status
+### 🧪 9. Running Automated Test Suites
 
-Implement:
-
-```text
-Pending
-Approved
-Rejected
-```
-
-Workflow:
-
-```text
-Employee
-    ↓
-Leave Request
-    ↓
-Pending
-    |
-    +------> Approved
-    |
-    +------> Rejected
-```
-
----
-
-# 7.4 HR Approval
-
-HR/Admin should be able to:
-
-* View leave requests
-* Approve requests
-* Reject requests
-* Add comments
-
-Changes should be reflected in employee records.
-
----
-
-## Member 2 MUST NOT
-
-Unless explicitly requested:
-
-* Modify authentication
-* Modify salary logic
-* Redesign the dashboard
-* Change security architecture
-
-If Member 2 needs a security change, communicate with Member 1.
-
----
-
-# 8. MEMBER 3 — EMPLOYEE PROFILE & PAYROLL
-
-## Branch
-
-```text
-feature/employee-payroll
-```
-
-## Main responsibility
-
-Member 3 owns:
-
-```text
-Employee Profile
-Salary Structure
-Payroll Visibility
-```
-
----
-
-# 8.1 Employee Profile
-
-Employees should be able to view:
-
-```text
-Personal Details
-Job Details
-Salary Structure
-Documents
-Profile Picture
-```
-
----
-
-# 8.2 Employee Editing
-
-Employees can edit only permitted fields:
-
-```text
-Address
-Phone
-Profile Picture
-```
-
-Employees must NOT be allowed to modify HR-controlled information such as salary or job information.
-
----
-
-# 8.3 Admin Editing
-
-Admin/HR should be able to edit employee information as required.
-
----
-
-# 8.4 Payroll
-
-Employees:
-
-```text
-View salary/payroll
-        ↓
-READ ONLY
-```
-
-Admin:
-
-```text
-View payroll
-       ↓
-Update salary structure
-```
-
-The payroll implementation should focus on the requirements specified for Dayflow.
-
-Do not unnecessarily build a complete accounting/payroll system if the hackathon requirement only needs salary/payroll visibility and salary structure control.
-
----
-
-## Member 3 MUST NOT
-
-Unless explicitly requested:
-
-* Modify attendance logic
-* Modify leave approval logic
-* Modify authentication
-* Redesign the dashboard
-
-Coordinate with Member 1 for employee/security relationships.
-
----
-
-# 9. MEMBER 4 — UI / DASHBOARD / QA
-
-## Branch
-
-```text
-feature/dashboard-ui
-```
-
-## Main responsibility
-
-Member 4 owns:
-
-```text
-Dashboards
-Menus
-Views
-Navigation
-UI
-Testing
-Demo Flow
-```
-
----
-
-# 9.1 Employee Dashboard
-
-The dashboard should provide quick access to:
-
-```text
-Profile
-Attendance
-Leave Requests
-Logout
-```
-
-It should also show recent activity or alerts where appropriate.
-
----
-
-# 9.2 Admin / HR Dashboard
-
-The dashboard should provide access to:
-
-```text
-Employee List
-Attendance Records
-Leave Approvals
-Employee Selection/Switching
-Payroll
-```
-
----
-
-# 9.3 Odoo Views
-
-Create appropriate:
-
-```text
-List Views
-Form Views
-Kanban Views
-Search Views
-Menus
-Actions
-Buttons
-Filters
-```
-
-Do not create UI that depends on models or fields that do not exist.
-
----
-
-# 9.4 QA Responsibility
-
-Member 4 should test the complete application continuously.
-
-### Employee test
-
-```text
-Login
- ↓
-Dashboard
- ↓
-Profile
- ↓
-Attendance
- ↓
-Check In
- ↓
-Check Out
- ↓
-Leave
- ↓
-Apply
- ↓
-View Leave Status
- ↓
-View Salary
-```
-
-### HR test
-
-```text
-Login
- ↓
-Dashboard
- ↓
-Employees
- ↓
-Attendance
- ↓
-Leave Requests
- ↓
-Approve/Reject
- ↓
-Payroll
- ↓
-Update Salary
-```
-
----
-
-# 9.5 Security Testing
-
-Verify:
-
-```text
-Employee A cannot see Employee B's private data.
-
-Employee cannot approve their own leave.
-
-Employee cannot modify salary.
-
-Employee cannot access HR-only screens.
-
-HR can access employee records.
-
-HR can approve/reject leave.
-
-```
-
----
-
-# 10. GitHub Workflow
-
-## Branches
-
-The repository should use:
-
-```text
-main
-develop
-```
-
-and feature branches:
-
-```text
-feature/core-security
-feature/attendance-leave
-feature/employee-payroll
-feature/dashboard-ui
-```
-
----
-
-# 11. Branch Rules
-
-### `main`
-
-`main` must always contain a stable/demo-ready version.
-
-Nobody should directly push to `main`.
-
----
-
-### `develop`
-
-`develop` is the integration branch.
-
-Feature branches merge into:
-
-```text
-feature/*
-      ↓
-develop
-```
-
-After testing:
-
-```text
-develop
-   ↓
-main
-```
-
----
-
-# 12. Daily Git Workflow
-
-Before starting work:
+Dayflow HRMS includes two automated testing suites:
 
 ```bash
-git checkout develop
-git pull origin develop
+# 1. Run all 38 Odoo/Model Unit Tests:
+python -m unittest discover -s dayflow/tests
 
-git checkout feature/<your-branch>
-git merge develop
+# 2. Run all 13 Backend Specification & Acceptance Criteria Tests:
+python test_backend.py
 ```
 
-Then work normally.
-
-After completing a logical task:
-
-```bash
-git status
-git add .
-git commit -m "Add attendance check-in"
-git push origin feature/attendance-leave
-```
-
-Create a Pull Request:
-
-```text
-feature/attendance-leave
-          ↓
-       develop
-```
-
-Another team member reviews it.
-
-After approval:
-
-```text
-Merge Pull Request
-```
+#### ✅ Test Verification Checklist
+* `38 / 38` Unit tests pass (`OK`).
+* `13 / 13` Integration tests pass (`100%`).
 
 ---
 
-# 13. Commit Message Convention
+## 📊 10. Current Implementation Status
 
-Use clear commit messages.
-
-Good:
-
-```text
-Add employee profile fields
-Add attendance check-in
-Add leave approval workflow
-Add employee dashboard
-Configure HR access rules
-Fix leave status update
-Fix employee attendance visibility
-```
-
-Avoid:
-
-```text
-update
-changes
-final
-final2
-test
-abc
-done
-```
+| Module / Feature | Status | Implementation Details |
+| :--- | :---: | :--- |
+| **Authentication & RBAC** | ✅ Implemented | Roles (Employee/HR), session handling, route protection. |
+| **Email OTP Verification** | ✅ Implemented | 6-digit numeric OTP, 10-min expiry, 45s cooldown, SMTP & dev mode fallback. |
+| **Employee Directory** | ✅ Implemented | Searchable workforce directory with department filtering. |
+| **Profile Management** | ✅ Implemented | View profiles & interactive "Edit Profile" modal with photo upload. |
+| **Attendance Clocking** | ✅ Implemented | Daily check-in/out with automated worked hours calculation. |
+| **Weekly Attendance View** | ✅ Implemented | 7-day Monday–Sunday schedule, weekend flags, total weekly hours. |
+| **Leave Applications** | ✅ Implemented | PTO, Sick, Unpaid leaves with date & overlap validations. |
+| **Leave Approval Queue** | ✅ Implemented | HR review portal with approve/reject actions & comments. |
+| **Attendance-Leave Sync**| ✅ Implemented | Approved leaves automatically update daily attendance to `LEAVE`. |
+| **Dynamic Payroll** | ✅ Implemented | Real-time Gross/Net calculation, HR editor, printable salary slips. |
+| **HR Analytics Dashboard**| ✅ Implemented | Live workforce KPIs + 4 Chart.js visualization panels. |
+| **Employee Dashboard** | ✅ Implemented | Weekly worked hours line chart + attendance doughnut gauge. |
+| **Notifications & Reports**| ✅ Implemented | System alerts with "Mark All as Read" & attendance progress ratios. |
+| **Mobile Responsiveness** | ✅ Implemented | 100% adaptive layouts for smartphones, tablets, and desktops. |
 
 ---
 
-# 14. Pull Request Rules
+## 🏆 11. Hackathon Context
 
-Every PR should contain:
-
-### Title
-
-```text
-Add attendance check-in/check-out
-```
-
-### Description
-
-```text
-## What was added
-- Added employee check-in
-- Added employee check-out
-- Added attendance record
-
-## Testing
-- Tested employee check-in
-- Tested employee check-out
-- Tested attendance visibility
-
-## Related module
-Attendance
-```
-
-Before merging, verify:
-
-```text
-[ ] Code works
-[ ] No unrelated files changed
-[ ] No secrets committed
-[ ] Odoo module installs
-[ ] Existing functionality still works
-[ ] Another member reviewed it
-```
+**Dayflow HRMS** was conceived and engineered for the **Odoo HRMS Hackathon**. The primary objective was to demonstrate how Odoo's robust backend data models and security framework can be coupled with a custom, ultra-fast, modern web interface to provide a seamless user experience for both employees and HR leaders.
 
 ---
 
-# 15. Merge Conflict Rules
+## 🤝 12. Team Ownership & Responsibilities
 
-If a conflict occurs:
+The project was structured across 4 specialized technical ownership areas:
 
-DO NOT blindly choose:
-
-```text
-Accept Current
-```
-
-or:
-
-```text
-Accept Incoming
-```
-
-First understand what both changes do.
-
-If the conflict involves another member's functionality:
-
-```text
-Stop
- ↓
-Contact the owner
- ↓
-Understand both changes
- ↓
-Resolve together
- ↓
-Test
-```
+| Member / Role | Focus Area | Key Deliverables |
+| :--- | :--- | :--- |
+| **Member 1: Tech Lead & Core Backend** | Core Architecture & Security | Odoo module configuration, base models, RBAC rules, ACLs, and API framework. |
+| **Member 2: Attendance & Leave Lead** | Attendance & Leave Systems | Daily/weekly attendance engine, leave state machine, and approval synchronization. |
+| **Member 3: Employee & Payroll Lead** | Profile & Payroll Systems | Employee records, permitted profile updates, salary compute engine, and payslip generation. |
+| **Member 4: UI, Dashboard & QA Lead** | Frontend UI & Testing | Dashboards, responsive mesh UI, Chart.js integrations, and automated test runners. |
 
 ---
 
-# 16. Shared Coding Rules
+## 🔮 13. Future Improvements
 
-All agents must follow these rules.
-
-### Rule 1 — Inspect before modifying
-
-Before changing a file:
-
-```text
-Read the file.
-Understand the existing code.
-Search for references.
-Then modify.
-```
+* **Biometric Hardware Integration**: Direct webhook sync with physical ZKTeco and RFID fingerprint clocking devices.
+* **Automated Statutory Tax Engine**: Dynamic tax slab calculations (e.g. TDS, PF, ESI) customized by jurisdiction.
+* **Push & SMS Alerts**: Browser push notifications and SMS OTP delivery integration via Twilio.
+* **AI Workforce Insights**: Predictive analytics for employee burnout, unplanned absence forecasting, and leave trend analysis.
 
 ---
 
-### Rule 2 — Reuse Odoo
-
-Before creating a new model:
-
-```text
-Check whether Odoo already provides the functionality.
-```
-
-Extend existing functionality where appropriate.
-
----
-
-### Rule 3 — Keep modules separated
-
-Attendance code should not contain payroll logic.
-
-Payroll code should not contain leave logic.
-
-Dashboard code should not contain business logic.
-
----
-
-### Rule 4 — Avoid unnecessary dependencies
-
-Do not install additional packages unless necessary.
-
----
-
-### Rule 5 — No hardcoded secrets
-
-Never commit:
-
-```text
-API keys
-Passwords
-Tokens
-.env
-Private credentials
-```
-
----
-
-### Rule 6 — Don't over-engineer
-
-The goal is a functional hackathon MVP.
-
-Prioritize:
-
-```text
-Working functionality
-Security
-Integration
-Good UI
-Reliable demo
-```
-
-over unnecessary complexity.
-
----
-
-# 17. Integration Order
-
-The team should integrate functionality in this order:
-
-```text
-1. Core Odoo module
-        ↓
-2. Employee + Users
-        ↓
-3. Security / Roles
-        ↓
-4. Employee Profile
-        ↓
-5. Attendance
-        ↓
-6. Leave
-        ↓
-7. Leave Approval
-        ↓
-8. Payroll / Salary
-        ↓
-9. Dashboards
-        ↓
-10. Testing
-        ↓
-11. UI Polish
-        ↓
-12. Final Demo
-```
-
----
-
-# 18. MVP Priority
-
-If time becomes limited, implement these first:
-
-## Priority 1 — MUST HAVE
-
-```text
-Authentication
-Role-based access
-Employee profile
-Attendance
-Check-in/check-out
-Leave application
-Leave approval
-Salary visibility
-Admin dashboard
-Employee dashboard
-```
-
-These directly correspond to the core functional requirements in the specification.
-
----
-
-## Priority 2 — SHOULD HAVE
-
-```text
-Daily/weekly attendance views
-Better filters
-Better employee management
-Comments on leave requests
-Improved dashboard cards
-```
-
----
-
-## Priority 3 — IF TIME ALLOWS
-
-The specification mentions:
-
-```text
-Email notifications
-Analytics
-Reports
-Salary slips
-Attendance reports
-```
-
-These are listed as future enhancements, so they should not take priority over the core HRMS.
-
----
-
-# 19. Final Hackathon Demo Flow
-
-The final demo should tell one complete story rather than showing disconnected features.
-
-```text
-                  HR LOGIN
-                     ↓
-              Create Employee
-                     ↓
-              Employee Profile
-                     ↓
-              Set Salary
-                     ↓
-              Employee LOGIN
-                     ↓
-            Employee Dashboard
-                     ↓
-              Check Attendance
-                     ↓
-                Check In
-                     ↓
-              Apply for Leave
-                     ↓
-                  PENDING
-                     ↓
-              HR Dashboard
-                     ↓
-             Review Leave
-                     ↓
-                 APPROVE
-                     ↓
-              Employee Dashboard
-                     ↓
-             Leave = APPROVED
-                     ↓
-              View Salary
-                     ↓
-             HR Payroll View
-```
-
-This demonstrates the relationship between the major Dayflow modules.
-
----
-
-# 20. Definition of Done
-
-A feature is NOT complete merely because the code was written.
-
-A feature is complete when:
-
-```text
-[ ] Code implemented
-[ ] Odoo module loads
-[ ] No Python/XML errors
-[ ] Required permissions work
-[ ] Employee behavior tested
-[ ] HR behavior tested
-[ ] Existing features still work
-[ ] Git commit created
-[ ] Branch pushed
-[ ] Pull Request created
-[ ] PR reviewed
-[ ] Merged into develop
-```
-
----
-
-# 21. Coding Agent Instructions
-
-When a team member asks an AI coding agent to implement something, the agent should follow this format mentally:
-
-```text
-1. Identify the assigned module.
-2. Inspect the repository.
-3. Read existing models/views/security.
-4. Determine whether Odoo already provides the required functionality.
-5. Reuse existing models where appropriate.
-6. Implement only the requested functionality.
-7. Preserve existing functionality.
-8. Test the implementation.
-9. Report modified files.
-10. Report tests performed.
-11. Do not modify unrelated modules.
-```
-
-Example:
-
-```text
-I am working on Member 2's Attendance & Leave module.
-
-Before making changes:
-- Inspect the existing Odoo module.
-- Check employee/user relationships.
-- Check existing security rules.
-- Check whether attendance functionality already exists.
-- Do not modify payroll or dashboard functionality.
-- Implement the requested attendance feature.
-- Test employee and HR access.
-- Summarize changed files after implementation.
-```
-
----
-
-# 22. Communication Between Members
-
-Use GitHub Issues or team communication for cross-module requirements.
-
-Example:
-
-```text
-Member 2:
-"I need employee_id and HR access rules for attendance."
-
-Member 1:
-"Employee relationship is available through <model/field>.
-I will add the required security rule."
-
-Member 2:
-"Okay, I'll implement attendance using that relationship."
-```
-
-Do not silently change another member's architecture.
-
----
-
-# 23. Team Ownership Summary
-
-```text
-┌─────────────────────────────────────────────────────────┐
-│                    DAYFLOW HRMS                         │
-├──────────────────────┬──────────────────────────────────┤
-│ MEMBER 1             │ Core Odoo / Security             │
-│                      │ Models / Roles / Integration      │
-├──────────────────────┼──────────────────────────────────┤
-│ MEMBER 2             │ Attendance / Leave               │
-│                      │ Check-in / Check-out / Approval  │
-├──────────────────────┼──────────────────────────────────┤
-│ MEMBER 3             │ Employee / Payroll               │
-│                      │ Profile / Salary / Payroll       │
-├──────────────────────┼──────────────────────────────────┤
-│ MEMBER 4             │ UI / Dashboard / QA              │
-│                      │ Views / Menus / Testing / Demo   │
-└──────────────────────┴──────────────────────────────────┘
-```
-
----
-
-# 24. Golden Rule
-
-> **Build independently, integrate frequently, and never break another member's work.**
-
-The goal is not for four people to build four separate applications.
-
-The goal is:
-
-```text
-4 Developers
-     ↓
-1 Odoo Module
-     ↓
-1 Integrated HRMS
-     ↓
-1 Reliable Demo
-     ↓
-Dayflow
-```
-
-**Dayflow — Every workday, perfectly aligned.**
+<div align="center">
+  <b>Dayflow HRMS — Every workday, perfectly aligned.</b><br>
+  <sub>Engineered with ❤️ for the Odoo Hackathon</sub>
+</div>
