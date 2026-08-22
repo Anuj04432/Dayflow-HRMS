@@ -820,6 +820,19 @@ async function renderHRCompanyPayroll() {
         }));
     }
 
+    // Update HR Company Payroll Stats Cards
+    const totalPayroll = payrollList.reduce((sum, p) => sum + (Number(p.net_salary) || 0), 0);
+    const totalDeductions = payrollList.reduce((sum, p) => sum + (Number(p.deductions) || 0), 0);
+    if (document.getElementById("hrPayrollMonthlyTotal")) {
+        document.getElementById("hrPayrollMonthlyTotal").textContent = `₹${(totalPayroll / 100000).toFixed(1)}L`;
+    }
+    if (document.getElementById("hrPayrollCount")) {
+        document.getElementById("hrPayrollCount").textContent = payrollList.length;
+    }
+    if (document.getElementById("hrPayrollTotalDeductions")) {
+        document.getElementById("hrPayrollTotalDeductions").textContent = `₹${(totalDeductions / 100000).toFixed(1)}L`;
+    }
+
     tbody.innerHTML = "";
     payrollList.forEach(p => {
         const basic = Number(p.basic_salary) || 0;
@@ -908,6 +921,15 @@ async function submitSalaryUpdate(employeeId) {
         localStorage.setItem("dayflow_users", JSON.stringify(users));
     }
 
+    const currUser = getCurrentUser();
+    if (currUser && (currUser.employee_id === employeeId || currUser.user_id === employeeId)) {
+        currUser.basic_salary = basic;
+        currUser.hra = hra;
+        currUser.allowances = allowance;
+        currUser.deductions = deductions;
+        setCurrentUser(currUser);
+    }
+
     if (res && res.success) {
         alert("✅ Salary structure updated successfully!");
         document.querySelector(".dayflow-modal")?.remove();
@@ -940,16 +962,32 @@ function downloadSalarySlipForUser(nameOrEmail, code, basic, hra, allowance, ded
     });
 }
 
-function downloadSalarySlip() {
-    const user = getCurrentUser() || { name: "Rahul Kumar", employee_code: "DF0002", basic_salary: 35000, hra: 8000, allowances: 5000, deductions: 2000 };
-    showSalarySlipModal(user);
+async function downloadSalarySlip() {
+    const user = getCurrentUser();
+    if (!user) return;
+    let salary = null;
+    try {
+        const res = await apiFetch('/api/payroll/salary-info');
+        if (res && res.success && res.data) {
+            salary = res.data;
+        }
+    } catch (e) {}
+
+    showSalarySlipModal({
+        name: user.name,
+        employee_code: user.employee_code || (salary ? salary.employee_code : "DF0001"),
+        basic_salary: salary ? salary.basic_salary : (user.basic_salary || 35000),
+        hra: salary ? salary.hra : (user.hra || 8000),
+        allowances: salary ? salary.special_allowance : (user.allowances || 5000),
+        deductions: salary ? salary.deductions : (user.deductions || 2000)
+    });
 }
 
 function showSalarySlipModal(user) {
     const basic = user.basic_salary || 35000;
-    const hra = user.hra || 8000;
-    const allowances = user.allowances || user.special_allowance || 5000;
-    const deductions = user.deductions || 2000;
+    const hra = user.hra || 0;
+    const allowances = user.allowances || user.special_allowance || 0;
+    const deductions = user.deductions || 0;
     const gross = basic + hra + allowances;
     const net = gross - deductions;
 

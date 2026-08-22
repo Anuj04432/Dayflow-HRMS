@@ -116,8 +116,13 @@ class DayflowPayrollController(http.Controller):
         return json_response(
             data={
                 'employee_id': payroll.employee_id.id,
+                'basic_salary': payroll.basic_salary,
+                'hra': payroll.hra,
+                'special_allowance': payroll.special_allowance,
+                'deductions': payroll.deductions,
                 'gross_salary': payroll.gross_salary,
                 'net_salary': payroll.net_salary,
+                'payment_frequency': payroll.payment_frequency,
             },
             message=f"Salary structure updated successfully for {payroll.employee_id.name}."
         )

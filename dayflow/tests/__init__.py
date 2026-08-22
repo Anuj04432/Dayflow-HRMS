@@ -2,4 +2,4 @@
 from . import test_attendance
 from . import test_leave
 from . import test_sync
-from . import test_model_direct
+from . import test_employee_payroll
