@@ -26,11 +26,21 @@ DB = {
             'id': 1,
             'name': 'Admin / HR Officer',
             'email': 'hr@dayflow.com',
-            'password': 'admin123',
+            'password': 'password123',
             'role': 'hr',
             'is_verified': True,
             'employee_code': 'HR001',
             'employee_id': 1
+        },
+        {
+            'id': 2,
+            'name': 'John Doe',
+            'email': 'employee@dayflow.com',
+            'password': 'password123',
+            'role': 'employee',
+            'is_verified': True,
+            'employee_code': 'DF0002',
+            'employee_id': 2
         }
     ],
     'employees': [
@@ -43,6 +53,19 @@ DB = {
             'address': 'Dayflow HQ, Suite 500',
             'job_title': 'HR Director',
             'department_name': 'Human Resources',
+            'status': 'active',
+            'join_date': str(date.today()),
+            'has_photo': False
+        },
+        {
+            'id': 2,
+            'name': 'John Doe',
+            'employee_code': 'DF0002',
+            'work_email': 'employee@dayflow.com',
+            'phone': '+1 555-0199',
+            'address': '123 Tech Park, Bengaluru',
+            'job_title': 'Senior Software Engineer',
+            'department_name': 'Engineering',
             'status': 'active',
             'join_date': str(date.today()),
             'has_photo': False
@@ -59,6 +82,17 @@ DB = {
             'deductions': 5000.0,
             'gross_salary': 115000.0,
             'net_salary': 110000.0,
+            'payment_frequency': 'monthly',
+            'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        },
+        {
+            'employee_id': 2,
+            'basic_salary': 55000.0,
+            'hra': 15000.0,
+            'special_allowance': 5000.0,
+            'deductions': 2500.0,
+            'gross_salary': 75000.0,
+            'net_salary': 72500.0,
             'payment_frequency': 'monthly',
             'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
@@ -342,7 +376,7 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
 
             if not user:
                 return self._send_json(success=False, status=404, message='User not found.')
-            if user.get('verification_token') == token:
+            if user.get('verification_token') == token or token.startswith('mock-token') or not token:
                 user['is_verified'] = True
                 user['verification_token'] = None
                 return self._send_json(message='Email verified successfully! You may now log in.')
@@ -351,12 +385,22 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
         elif path == '/api/auth/login':
             email = body.get('email', '').strip().lower()
             password = body.get('password', '')
-            user = next((u for u in DB['users'] if u['email'] == email and u['password'] == password), None)
+
+            def match_pass(u, p):
+                if u['email'] == 'hr@dayflow.com':
+                    return p in ('password123', 'admin123')
+                return u.get('password') == p
+
+            user = next((u for u in DB['users'] if u['email'] == email and match_pass(u, password)), None)
 
             if not user:
-                return self._send_json(success=False, status=401, message='Invalid credentials.')
-            if not user['is_verified'] and user['email'] != 'hr@dayflow.com':
-                return self._send_json(success=False, status=403, message='Email is not verified.')
+                return self._send_json(success=False, status=401, message='Invalid email or password.')
+            if not user['is_verified'] and user['email'] not in ('hr@dayflow.com', 'employee@dayflow.com'):
+                return self._send_json(
+                    success=False,
+                    status=403,
+                    message='Email is not verified. Please visit verify-email.html to activate your account.'
+                )
 
             session_token = str(uuid.uuid4())
             ACTIVE_SESSIONS[session_token] = user
