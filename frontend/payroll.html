@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dayflow - Payroll</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+
+<div class="dashboard-layout">
+
+    <aside class="sidebar">
+
+        <div class="sidebar-brand">
+            <h2>Dayflow</h2>
+            <span>Payroll</span>
+        </div>
+
+        <nav>
+            <a href="employee-dashboard.html">
+                <span class="nav-icon">📊</span>
+                <span>Dashboard</span>
+            </a>
+
+            <a href="profile.html">
+                <span class="nav-icon">👤</span>
+                <span>Profile</span>
+            </a>
+
+            <a href="attendance.html">
+                <span class="nav-icon">🕒</span>
+                <span>Attendance</span>
+            </a>
+
+            <a href="leave.html">
+                <span class="nav-icon">📅</span>
+                <span>Leave Requests</span>
+            </a>
+
+            <a href="payroll.html" class="active">
+                <span class="nav-icon">💰</span>
+                <span>Payroll</span>
+            </a>
+
+            <a href="notifications.html">
+                <span class="nav-icon">🔔</span>
+                <span>Notifications</span>
+            </a>
+
+            <a href="reports.html">
+                <span class="nav-icon">📈</span>
+                <span>Reports</span>
+            </a>
+        </nav>
+
+        <button type="button" class="logout-btn" onclick="logout()">
+            <span class="nav-icon">🚪</span>
+            <span>Logout</span>
+        </button>
+
+    </aside>
+
+
+    <main class="main-content">
+
+        <header class="topbar">
+
+            <div>
+                <h2>Payroll & Compensation</h2>
+                <p>View your transparent salary structure and generate payslips.</p>
+            </div>
+
+            <div class="user-box">
+                <div class="avatar">U</div>
+                <span>User</span>
+            </div>
+
+        </header>
+
+
+        <section class="dashboard-content">
+
+            <div class="salary-summary">
+
+                <div class="salary-card">
+                    <span>Basic Salary</span>
+                    <h2 id="payrollBasic">₹35,000</h2>
+                </div>
+
+                <div class="salary-card">
+                    <span>Allowances & HRA</span>
+                    <h2 id="payrollAllowances">₹13,000</h2>
+                </div>
+
+                <div class="salary-card">
+                    <span>Tax & Deductions</span>
+                    <h2 id="payrollDeductions">₹2,000</h2>
+                </div>
+
+                <div class="salary-card">
+                    <span>Net Take-Home</span>
+                    <h2 id="payrollNet" style="color: #4f46e5;">₹46,000</h2>
+                </div>
+
+            </div>
+
+
+            <div class="section-card">
+
+                <div class="section-header">
+
+                    <h3>Salary Breakdown (Monthly)</h3>
+
+                    <button type="button" class="secondary-btn" onclick="downloadSalarySlip()">
+                        📄 Download Salary Slip
+                    </button>
+
+                </div>
+
+
+                <div class="table-container">
+
+                    <table>
+
+                        <thead>
+                            <tr>
+                                <th>Compensation Component</th>
+                                <th>Amount (INR)</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+
+                            <tr>
+                                <td>Basic Salary</td>
+                                <td>₹35,000</td>
+                            </tr>
+
+                            <tr>
+                                <td>House Rent Allowance (HRA)</td>
+                                <td>₹8,000</td>
+                            </tr>
+
+                            <tr>
+                                <td>Special & Medical Allowances</td>
+                                <td>₹5,000</td>
+                            </tr>
+
+                            <tr style="color: #dc2626;">
+                                <td>Statutory Deductions (PF / TDS)</td>
+                                <td>-₹2,000</td>
+                            </tr>
+
+                            <tr style="background: #f8fafc; font-size: 15px;">
+                                <td>
+                                    <strong>Net Disbursed Salary</strong>
+                                </td>
+
+                                <td>
+                                    <strong style="color: #4f46e5;">₹46,000</strong>
+                                </td>
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+<script src="../js/script.js"></script>
+</body>
+</html>
