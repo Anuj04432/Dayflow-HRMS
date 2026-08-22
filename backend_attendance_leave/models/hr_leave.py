@@ -196,22 +196,69 @@ class DayflowLeave(models.Model):
         })
         return record
 
+    def _is_user_hr_or_admin(self):
+        """Check whether the active environment user has HR or Admin privileges."""
+        user = self.env.user
+        return (
+            user.id == 1 or
+            user.has_group('dayflow.group_dayflow_hr') or
+            user.has_group('backend_attendance_leave.group_dayflow_hr')
+        )
+
     def action_approve(self, comments=None):
-        """Approve leave request (HR only)."""
+        """
+        Approve leave request (HR / Admin only).
+        Validates that user is authorized, record is currently in 'pending' state,
+        records reviewer ID and stores HR comments.
+        """
+        if not self._is_user_hr_or_admin():
+            raise exceptions.AccessError("Only HR Officers / Admins can approve leave requests.")
+
         for rec in self:
+            if rec.state != 'pending':
+                raise exceptions.ValidationError(
+                    f"Cannot approve leave request in '{rec.state}' state. Only pending requests can be approved."
+                )
             rec.write({
                 'state': 'approved',
                 'approved_by': self.env.user.id,
-                'manager_remarks': comments or rec.manager_remarks
+                'manager_remarks': comments or rec.manager_remarks or '',
+                'hr_comments': comments or rec.hr_comments or '',
             })
+            # Synchronize any existing attendance records covering this date range
+            try:
+                attendances = self.env['dayflow.attendance'].sudo().search([
+                    ('employee_id', '=', rec.employee_id.id),
+                    ('date', '>=', rec.date_from),
+                    ('date', '<=', rec.date_to),
+                ])
+                if attendances:
+                    attendances.write({'status': 'leave'})
+            except Exception:
+                pass
         return True
 
     def action_reject(self, comments=None):
-        """Reject leave request (HR only)."""
+        """
+        Reject leave request (HR / Admin only).
+        Requires HR comments explaining the reason, validates that record is currently
+        in 'pending' state, and records reviewer ID.
+        """
+        if not self._is_user_hr_or_admin():
+            raise exceptions.AccessError("Only HR Officers / Admins can reject leave requests.")
+
+        if not comments or not comments.strip():
+            raise exceptions.ValidationError("HR comments explaining the reason for rejection are required.")
+
         for rec in self:
+            if rec.state != 'pending':
+                raise exceptions.ValidationError(
+                    f"Cannot reject leave request in '{rec.state}' state. Only pending requests can be rejected."
+                )
             rec.write({
                 'state': 'rejected',
                 'approved_by': self.env.user.id,
-                'manager_remarks': comments or rec.manager_remarks
+                'manager_remarks': comments.strip(),
+                'hr_comments': comments.strip(),
             })
         return True
