@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dayflow - Attendance</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+
+<div class="dashboard-layout">
+
+    <aside class="sidebar">
+
+        <div class="sidebar-brand">
+            <h2>Dayflow</h2>
+            <span>Attendance</span>
+        </div>
+
+        <nav>
+            <a href="employee-dashboard.html">
+                <span class="nav-icon">📊</span>
+                <span>Dashboard</span>
+            </a>
+
+            <a href="profile.html">
+                <span class="nav-icon">👤</span>
+                <span>Profile</span>
+            </a>
+
+            <a href="attendance.html" class="active">
+                <span class="nav-icon">🕒</span>
+                <span>Attendance</span>
+            </a>
+
+            <a href="leave.html">
+                <span class="nav-icon">📅</span>
+                <span>Leave Requests</span>
+            </a>
+
+            <a href="payroll.html">
+                <span class="nav-icon">💰</span>
+                <span>Payroll</span>
+            </a>
+
+            <a href="notifications.html">
+                <span class="nav-icon">🔔</span>
+                <span>Notifications</span>
+            </a>
+
+            <a href="reports.html">
+                <span class="nav-icon">📈</span>
+                <span>Reports</span>
+            </a>
+        </nav>
+
+        <button type="button" class="logout-btn" onclick="logout()">
+            <span class="nav-icon">🚪</span>
+            <span>Logout</span>
+        </button>
+
+    </aside>
+
+
+    <main class="main-content">
+
+        <header class="topbar">
+            <div>
+                <h2>Attendance Tracking</h2>
+                <p>Track daily check-ins, check-outs, and work logs.</p>
+            </div>
+
+            <div class="user-box">
+                <div class="avatar">U</div>
+                <span>User</span>
+            </div>
+        </header>
+
+
+        <section class="dashboard-content">
+
+            <div class="attendance-actions section-card">
+
+                <div>
+                    <h3>Today's Attendance Status</h3>
+                    <p id="attendanceStatus">
+                        Not checked in
+                    </p>
+                </div>
+
+                <div class="action-buttons">
+
+                    <button
+                        type="button"
+                        class="primary-btn"
+                        onclick="checkIn()"
+                    >
+                        Check In
+                    </button>
+
+                    <button
+                        type="button"
+                        class="secondary-btn"
+                        onclick="checkOut()"
+                    >
+                        Check Out
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <div class="section-card">
+
+                <div class="section-header">
+                    <h3>Attendance Records</h3>
+
+                    <div class="tabs">
+                        <button type="button" class="tab active" onclick="switchAttendanceTab(this, 'daily')">
+                            Daily
+                        </button>
+
+                        <button type="button" class="tab" onclick="switchAttendanceTab(this, 'weekly')">
+                            Weekly
+                        </button>
+                    </div>
+                </div>
+
+
+                <div class="table-container">
+
+                    <table id="attendanceTable">
+
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Check In</th>
+                                <th>Check Out</th>
+                                <th>Working Hours</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            <!-- Dynamically rendered by script.js -->
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+<script src="../js/script.js"></script>
+</body>
+</html>
