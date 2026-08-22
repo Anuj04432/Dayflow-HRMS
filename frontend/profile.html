@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dayflow - Profile</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+
+<div class="dashboard-layout">
+
+    <aside class="sidebar">
+
+        <div class="sidebar-brand">
+            <h2>Dayflow</h2>
+            <span>Profile</span>
+        </div>
+
+        <nav>
+            <a id="navDashboard" href="employee-dashboard.html">
+                <span class="nav-icon">📊</span>
+                <span>Dashboard</span>
+            </a>
+
+            <a href="profile.html" class="active">
+                <span class="nav-icon">👤</span>
+                <span>Profile</span>
+            </a>
+
+            <a href="attendance.html">
+                <span class="nav-icon">🕒</span>
+                <span>Attendance</span>
+            </a>
+
+            <a href="leave.html">
+                <span class="nav-icon">📅</span>
+                <span>Leave Requests</span>
+            </a>
+
+            <a href="payroll.html">
+                <span class="nav-icon">💰</span>
+                <span>Payroll</span>
+            </a>
+
+            <a href="notifications.html">
+                <span class="nav-icon">🔔</span>
+                <span>Notifications</span>
+            </a>
+
+            <a href="reports.html">
+                <span class="nav-icon">📈</span>
+                <span>Reports</span>
+            </a>
+        </nav>
+
+        <button type="button" class="logout-btn" onclick="logout()">
+            <span class="nav-icon">🚪</span>
+            <span>Logout</span>
+        </button>
+
+    </aside>
+
+
+    <main class="main-content">
+
+        <header class="topbar">
+            <div>
+                <h2>My Profile</h2>
+                <p>View employee record and update permitted contact information.</p>
+            </div>
+
+            <div class="user-box">
+                <div class="avatar">U</div>
+                <span>User</span>
+            </div>
+        </header>
+
+
+        <section class="dashboard-content">
+
+            <div class="profile-header section-card">
+
+                <div class="profile-picture">
+                    <span>RK</span>
+                </div>
+
+                <div>
+                    <h2 id="profileName">Rahul Kumar</h2>
+                    <p>Employee ID: <span id="profileEmpId">DF0002</span></p>
+                    <p id="profileDept">Engineering</p>
+                </div>
+
+            </div>
+
+
+            <div class="profile-grid">
+
+                <div class="section-card">
+
+                    <h3>Personal Details</h3>
+
+                    <div class="detail-grid">
+
+                        <div>
+                            <label>Employee ID</label>
+                            <p id="profileEmpIdText">DF0002</p>
+                        </div>
+
+                        <div>
+                            <label>Work Email</label>
+                            <p id="profileEmail">employee@dayflow.com</p>
+                        </div>
+
+                        <div>
+                            <label for="profilePhone">Phone Number</label>
+                            <input
+                                type="text"
+                                id="profilePhone"
+                                value="+91 98765 12345"
+                            >
+                        </div>
+
+                        <div>
+                            <label for="profileAddress">Residential Address</label>
+                            <textarea
+                                id="profileAddress"
+                                rows="2"
+                            >Indiranagar, Bengaluru, India</textarea>
+                        </div>
+
+                    </div>
+
+                    <button type="button" class="primary-btn small-btn" onclick="saveProfile()">
+                        💾 Save Changes
+                    </button>
+
+                </div>
+
+
+                <div class="section-card">
+
+                    <h3>Job Details</h3>
+
+                    <div class="detail-list">
+
+                        <div>
+                            <span>Department</span>
+                            <strong id="jobDept">Engineering</strong>
+                        </div>
+
+                        <div>
+                            <span>Designation</span>
+                            <strong>Software Engineer</strong>
+                        </div>
+
+                        <div>
+                            <span>Joining Date</span>
+                            <strong>01 March 2025</strong>
+                        </div>
+
+                        <div>
+                            <span>Employment Status</span>
+                            <strong style="color: #16a34a;">Active</strong>
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="section-card">
+
+                    <h3>Salary Structure</h3>
+
+                    <div class="salary-box">
+
+                        <div>
+                            <span>Basic Salary</span>
+                            <strong>₹35,000</strong>
+                        </div>
+
+                        <div>
+                            <span>Allowances</span>
+                            <strong>₹13,000</strong>
+                        </div>
+
+                        <div>
+                            <span>Gross Monthly</span>
+                            <strong>₹48,000</strong>
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="section-card">
+
+                    <h3>Documents</h3>
+
+                    <div class="document-item">
+                        <span>📄 National Identity Document</span>
+                        <button type="button" class="secondary-btn" onclick="viewDocument('National Identity Document')">View</button>
+                    </div>
+
+                    <div class="document-item">
+                        <span>📄 Employment Contract (Signed)</span>
+                        <button type="button" class="secondary-btn" onclick="viewDocument('Employment Contract')">View</button>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+<script src="../js/script.js"></script>
+</body>
+</html>

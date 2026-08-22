@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dayflow - Reports</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+
+<div class="dashboard-layout">
+
+    <aside class="sidebar">
+
+        <div class="sidebar-brand">
+            <h2>Dayflow</h2>
+            <span>Reports</span>
+        </div>
+
+        <nav>
+            <a id="navDashboard" href="employee-dashboard.html">
+                <span class="nav-icon">📊</span>
+                <span>Dashboard</span>
+            </a>
+
+            <a href="profile.html">
+                <span class="nav-icon">👤</span>
+                <span>Profile</span>
+            </a>
+
+            <a href="attendance.html">
+                <span class="nav-icon">🕒</span>
+                <span>Attendance</span>
+            </a>
+
+            <a href="leave.html">
+                <span class="nav-icon">📅</span>
+                <span>Leave Requests</span>
+            </a>
+
+            <a href="payroll.html">
+                <span class="nav-icon">💰</span>
+                <span>Payroll</span>
+            </a>
+
+            <a href="notifications.html">
+                <span class="nav-icon">🔔</span>
+                <span>Notifications</span>
+            </a>
+
+            <a href="reports.html" class="active">
+                <span class="nav-icon">📈</span>
+                <span>Reports</span>
+            </a>
+        </nav>
+
+        <button type="button" class="logout-btn" onclick="logout()">
+            <span class="nav-icon">🚪</span>
+            <span>Logout</span>
+        </button>
+
+    </aside>
+
+
+    <main class="main-content">
+
+        <header class="topbar">
+
+            <div>
+                <h2>Reports & Analytics</h2>
+                <p>Operational HR statistics, attendance ratio, and time-off tracking.</p>
+            </div>
+
+            <div class="user-box">
+                <div class="avatar">U</div>
+                <span>User</span>
+            </div>
+
+        </header>
+
+
+        <section class="dashboard-content">
+
+            <div class="stats-grid">
+
+                <div class="stat-card">
+
+                    <div class="stat-icon">
+                        🕒
+                    </div>
+
+                    <h3>Attendance Report</h3>
+
+                    <p>
+                        Aggregate presence, check-in averages, and late marks.
+                    </p>
+
+                    <button type="button" class="secondary-btn" onclick="viewReport('Attendance Analytics')">
+                        View Report
+                    </button>
+
+                </div>
+
+
+                <div class="stat-card">
+
+                    <div class="stat-icon">
+                        💰
+                    </div>
+
+                    <h3>Salary Slip</h3>
+
+                    <p>
+                        Generate printable compensation and tax voucher.
+                    </p>
+
+                    <button type="button" class="secondary-btn" onclick="downloadSalarySlip()">
+                        View Salary Slip
+                    </button>
+
+                </div>
+
+
+                <div class="stat-card">
+
+                    <div class="stat-icon">
+                        📅
+                    </div>
+
+                    <h3>Leave Report</h3>
+
+                    <p>
+                        Historical time-off utilization and PTO balances.
+                    </p>
+
+                    <button type="button" class="secondary-btn" onclick="viewReport('Leave History & Balances')">
+                        View Report
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <div class="section-card">
+
+                <h3>Attendance Overview</h3>
+
+                <div class="progress-container">
+
+                    <div class="progress-label">
+                        <span>Present / On-Duty</span>
+                        <strong style="color: #16a34a;">85%</strong>
+                    </div>
+
+                    <div class="progress">
+                        <div
+                            class="progress-bar"
+                            style="width: 85%; background: #16a34a;"
+                        ></div>
+                    </div>
+
+                </div>
+
+
+                <div class="progress-container">
+
+                    <div class="progress-label">
+                        <span>Approved Leaves</span>
+                        <strong style="color: #d97706;">10%</strong>
+                    </div>
+
+                    <div class="progress">
+                        <div
+                            class="progress-bar"
+                            style="width: 10%; background: #d97706;"
+                        ></div>
+                    </div>
+
+                </div>
+
+
+                <div class="progress-container">
+
+                    <div class="progress-label">
+                        <span>Absences</span>
+                        <strong style="color: #dc2626;">5%</strong>
+                    </div>
+
+                    <div class="progress">
+                        <div
+                            class="progress-bar"
+                            style="width: 5%; background: #dc2626;"
+                        ></div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+<script src="../js/script.js"></script>
+</body>
+</html>

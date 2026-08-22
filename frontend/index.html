@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dayflow - Sign In</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body class="auth-body">
+
+    <div class="auth-container">
+
+        <div class="auth-left">
+            <div class="brand">
+                <h1>Dayflow</h1>
+                <p>Every workday, perfectly aligned.</p>
+            </div>
+
+            <div class="auth-info">
+                <h2>Human Resource Management System</h2>
+                <p>
+                    Manage employees, attendance, leaves, and payroll
+                    from one unified, modern platform.
+                </p>
+
+                <div class="demo-credentials-box">
+                    <h4>Demo Accounts (Click to autofill)</h4>
+                    <p onclick="fillCredentials('hr@dayflow.com', 'password123')">
+                        👑 <strong>HR Admin:</strong> hr@dayflow.com
+                    </p>
+                    <p onclick="fillCredentials('employee@dayflow.com', 'password123')">
+                        👤 <strong>Employee:</strong> employee@dayflow.com
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="auth-card">
+
+            <h2>Welcome Back</h2>
+            <p class="subtitle">Sign in to your Dayflow account</p>
+
+            <form id="loginForm">
+
+                <div class="form-group">
+                    <label for="loginEmail">Email Address</label>
+                    <input
+                        type="email"
+                        id="loginEmail"
+                        placeholder="Enter your email"
+                        autocomplete="email"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input
+                        type="password"
+                        id="loginPassword"
+                        placeholder="Enter your password"
+                        autocomplete="current-password"
+                        required
+                    >
+                </div>
+
+                <p id="loginError" class="error-message"></p>
+
+                <button type="submit" class="primary-btn">
+                    Sign In
+                </button>
+
+            </form>
+
+            <p class="auth-link">
+                Don't have an account?
+                <a href="signup.html">Create Account</a>
+            </p>
+
+        </div>
+
+    </div>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>

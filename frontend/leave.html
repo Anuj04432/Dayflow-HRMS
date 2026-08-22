@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dayflow - Leave Management</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+
+<div class="dashboard-layout">
+
+    <aside class="sidebar">
+
+        <div class="sidebar-brand">
+            <h2>Dayflow</h2>
+            <span>Leave</span>
+        </div>
+
+        <nav>
+            <a id="navDashboard" href="employee-dashboard.html">
+                <span class="nav-icon">📊</span>
+                <span>Dashboard</span>
+            </a>
+
+            <a href="profile.html">
+                <span class="nav-icon">👤</span>
+                <span>Profile</span>
+            </a>
+
+            <a href="attendance.html">
+                <span class="nav-icon">🕒</span>
+                <span>Attendance</span>
+            </a>
+
+            <a href="leave.html" class="active">
+                <span class="nav-icon">📅</span>
+                <span>Leave Requests</span>
+            </a>
+
+            <a href="payroll.html">
+                <span class="nav-icon">💰</span>
+                <span>Payroll</span>
+            </a>
+
+            <a href="notifications.html">
+                <span class="nav-icon">🔔</span>
+                <span>Notifications</span>
+            </a>
+
+            <a href="reports.html">
+                <span class="nav-icon">📈</span>
+                <span>Reports</span>
+            </a>
+        </nav>
+
+        <button type="button" class="logout-btn" onclick="logout()">
+            <span class="nav-icon">🚪</span>
+            <span>Logout</span>
+        </button>
+
+    </aside>
+
+
+    <main class="main-content">
+
+        <header class="topbar">
+            <div>
+                <h2>Leave Management</h2>
+                <p>Apply for leaves and manage approval workflows.</p>
+            </div>
+
+            <div class="user-box">
+                <div class="avatar">U</div>
+                <span>User</span>
+            </div>
+        </header>
+
+
+        <section class="dashboard-content">
+
+            <!-- ================= EMPLOYEE LEAVE SECTION ================= -->
+            <div id="employeeLeaveSection">
+
+                <div class="section-card">
+
+                    <h3>Apply for Leave</h3>
+
+                    <form id="leaveForm">
+
+                        <div class="form-row">
+
+                            <div class="form-group">
+                                <label for="leaveType">Leave Type</label>
+
+                                <select id="leaveType" required>
+                                    <option value="">Select Leave Type</option>
+                                    <option value="Paid Leave">Paid Time Off (PTO)</option>
+                                    <option value="Sick Leave">Sick Leave</option>
+                                    <option value="Unpaid Leave">Unpaid Leave</option>
+                                </select>
+                            </div>
+
+
+                            <div class="form-group">
+                                <label for="leaveFrom">From Date</label>
+                                <input type="date" id="leaveFrom" required>
+                            </div>
+
+
+                            <div class="form-group">
+                                <label for="leaveTo">To Date</label>
+                                <input type="date" id="leaveTo" required>
+                            </div>
+
+                        </div>
+
+
+                        <div class="form-group">
+
+                            <label for="leaveRemarks">Reason / Remarks</label>
+
+                            <textarea
+                                id="leaveRemarks"
+                                rows="3"
+                                placeholder="Enter detailed reason for leave request..."
+                                required
+                            ></textarea>
+
+                        </div>
+
+
+                        <button
+                            type="submit"
+                            class="primary-btn"
+                        >
+                            Submit Leave Request
+                        </button>
+
+                    </form>
+
+                    <p id="leaveMessage" class="success-message"></p>
+
+                </div>
+
+
+                <div class="section-card">
+
+                    <h3>My Leave Requests Log</h3>
+
+                    <div class="table-container">
+
+                        <table id="personalLeaveTable">
+
+                            <thead>
+                                <tr>
+                                    <th>Leave Type</th>
+                                    <th>From</th>
+                                    <th>To</th>
+                                    <th>Remarks</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                <!-- Dynamically populated by script.js -->
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ================= HR LEAVE APPROVALS SECTION ================= -->
+            <div id="hrLeaveSection" class="hidden">
+
+                <div class="stats-grid">
+
+                    <div class="stat-card">
+                        <div class="stat-icon">📋</div>
+                        <h3>Pending Requests</h3>
+                        <h2 style="color: #d97706;">1</h2>
+                        <p>Awaiting review</p>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">✅</div>
+                        <h3>Approved Leaves</h3>
+                        <h2 style="color: #16a34a;">2</h2>
+                        <p>Approved this month</p>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">❌</div>
+                        <h3>Rejected Requests</h3>
+                        <h2 style="color: #dc2626;">0</h2>
+                        <p>Declined this month</p>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">📊</div>
+                        <h3>Approval Rate</h3>
+                        <h2>100%</h2>
+                        <p>Policy compliance</p>
+                    </div>
+
+                </div>
+
+
+                <div class="section-card">
+
+                    <div class="section-header">
+                        <h3>Employee Leave Requests Queue</h3>
+                    </div>
+
+                    <div class="table-container">
+
+                        <table id="hrLeaveTable">
+
+                            <thead>
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Department</th>
+                                    <th>Leave Type</th>
+                                    <th>Duration</th>
+                                    <th>Remarks</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                <!-- Dynamically populated by script.js -->
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+<script src="../js/script.js"></script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dayflow - Verify Email</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body class="auth-body">
+
+    <div class="auth-card verify-card">
+
+        <div class="verify-icon" aria-hidden="true">
+            ✓
+        </div>
+
+        <h2>Verify Your Email</h2>
+
+        <p class="subtitle">
+            Click the button below to confirm your email and activate your Dayflow account.
+        </p>
+
+        <button
+            type="button"
+            class="primary-btn"
+            onclick="verifyEmail()"
+        >
+            Confirm & Verify Email
+        </button>
+
+        <p id="verifyMessage" class="success-message"></p>
+
+        <a href="index.html" class="back-link">
+            Back to Sign In
+        </a>
+
+    </div>
+
+   <script src="../js/script.js"></script>
+</body>
+</html>

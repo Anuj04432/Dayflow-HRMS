@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dayflow - HR Dashboard</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+
+<div class="dashboard-layout">
+
+    <aside class="sidebar">
+
+        <div class="sidebar-brand">
+            <h2>Dayflow</h2>
+            <span>HR / Admin</span>
+        </div>
+
+        <nav>
+            <a href="hr-dashboard.html" class="active">
+                <span class="nav-icon">📊</span>
+                <span>Dashboard</span>
+            </a>
+
+            <a href="profile.html">
+                <span class="nav-icon">👤</span>
+                <span>My Profile</span>
+            </a>
+
+            <a href="attendance.html">
+                <span class="nav-icon">🕒</span>
+                <span>Attendance Logs</span>
+            </a>
+
+            <a href="leave.html">
+                <span class="nav-icon">📋</span>
+                <span>Leave Approvals</span>
+            </a>
+
+            <a href="payroll.html">
+                <span class="nav-icon">💰</span>
+                <span>Payroll</span>
+            </a>
+
+            <a href="notifications.html">
+                <span class="nav-icon">🔔</span>
+                <span>Notifications</span>
+            </a>
+
+            <a href="reports.html">
+                <span class="nav-icon">📈</span>
+                <span>HR Reports</span>
+            </a>
+        </nav>
+
+        <button type="button" class="logout-btn" onclick="logout()">
+            <span class="nav-icon">🚪</span>
+            <span>Logout</span>
+        </button>
+
+    </aside>
+
+
+    <main class="main-content">
+
+        <header class="topbar">
+
+            <div>
+                <h2>HR & Admin Dashboard</h2>
+                <p>Manage employees, attendance, and leave approvals.</p>
+            </div>
+
+            <div class="user-box">
+                <div class="avatar">HR</div>
+                <span>HR Officer</span>
+            </div>
+
+        </header>
+
+
+        <section class="dashboard-content">
+
+            <div class="stats-grid">
+
+                <div class="stat-card">
+                    <div class="stat-icon">👥</div>
+                    <h3>Employees</h3>
+                    <h2 id="kpiEmployees">124</h2>
+                    <p>Total active employees</p>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">🕒</div>
+                    <h3>Attendance</h3>
+                    <h2 id="kpiAttendance">112</h2>
+                    <p>Present today</p>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">📋</div>
+                    <h3>Leave Requests</h3>
+                    <h2 id="kpiLeaves">2</h2>
+                    <p>Pending your approval</p>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">💰</div>
+                    <h3>Monthly Payroll</h3>
+                    <h2 id="kpiPayroll">₹12.5L</h2>
+                    <p>Total payroll expenditure</p>
+                </div>
+
+            </div>
+
+
+            <div class="section-card">
+
+                <div class="section-header">
+                    <h3>Employee Directory</h3>
+
+                    <input
+                        type="text"
+                        class="search-input"
+                        placeholder="Search employee by name, ID, or dept..."
+                        onkeyup="searchEmployees()"
+                        id="employeeSearch"
+                        style="max-width: 320px;"
+                    >
+                </div>
+
+                <div class="table-container">
+
+                    <table id="employeeTable">
+
+                        <thead>
+                            <tr>
+                                <th>Employee ID</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Department</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+
+                            <tr>
+                                <td>DF0001</td>
+                                <td>Anita Sharma</td>
+                                <td>hr@dayflow.com</td>
+                                <td>Human Resources</td>
+                                <td>
+                                    <span class="status active">
+                                        Active (HR)
+                                    </span>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td>DF0002</td>
+                                <td>Rahul Kumar</td>
+                                <td>employee@dayflow.com</td>
+                                <td>Engineering</td>
+                                <td>
+                                    <span class="status active">
+                                        Active
+                                    </span>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td>DF0003</td>
+                                <td>Arjun Singh</td>
+                                <td>arjun@dayflow.com</td>
+                                <td>Finance</td>
+                                <td>
+                                    <span class="status on_leave">
+                                        On Leave
+                                    </span>
+                                </td>
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+<script src="../js/script.js"></script>
+</body>
+</html>
