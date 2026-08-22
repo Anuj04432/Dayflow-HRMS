@@ -3,7 +3,7 @@ import uuid
 import logging
 from odoo import http
 from odoo.http import request
-from .common import json_response, options_response, get_json_body
+from .common import json_response, options_response, get_json_body, is_hr_user
 
 _logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class DayflowAuthController(http.Controller):
             employee = user.dayflow_employee_id or request.env['dayflow.employee'].sudo().search([('user_id', '=', user.id)], limit=1)
             
             # Determine effective role
-            role = 'hr' if (user.has_group('backend.group_dayflow_hr') or user.has_group('dayflow.group_dayflow_hr') or user.id == 1) else 'employee'
+            role = 'hr' if is_hr_user(user) else 'employee'
 
             user_data = {
                 'user_id': user.id,
@@ -200,7 +200,7 @@ class DayflowAuthController(http.Controller):
 
         user = request.env.user
         employee = user.dayflow_employee_id or request.env['dayflow.employee'].sudo().search([('user_id', '=', user.id)], limit=1)
-        role = 'hr' if (user.has_group('backend.group_dayflow_hr') or user.has_group('dayflow.group_dayflow_hr') or user.id == 1) else 'employee'
+        role = 'hr' if is_hr_user(user) else 'employee'
 
         return json_response(data={
             'user_id': user.id,

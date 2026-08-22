@@ -2,7 +2,7 @@
 import logging
 from odoo import http, fields
 from odoo.http import request
-from .common import json_response, options_response, get_json_body
+from .common import json_response, options_response, get_json_body, is_hr_user
 
 _logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ class DayflowPayrollController(http.Controller):
             return options_response()
 
         user = request.env.user
-        is_hr = user.has_group('backend.group_dayflow_hr') or user.has_group('dayflow.group_dayflow_hr') or user.id == 1
+        is_hr = is_hr_user(user)
 
         if employee_id and is_hr:
             employee = request.env['dayflow.employee'].browse(int(employee_id))
@@ -60,14 +60,41 @@ class DayflowPayrollController(http.Controller):
 
         return json_response(data=salary_data)
 
+    @http.route('/api/payroll/company', type='http', auth='user', methods=['GET', 'OPTIONS'], csrf=False, cors='*')
+    def get_company_payroll(self, **kwargs):
+        """HR endpoint to retrieve salary structure for all employees."""
+        if request.httprequest.method == 'OPTIONS':
+            return options_response()
+
+        if not is_hr_user(request.env.user):
+            return json_response(success=False, status=403, message='Access denied: HR privileges required.')
+
+        payrolls = request.env['dayflow.payroll'].search([])
+        data = [{
+            'id': p.id,
+            'employee_id': p.employee_id.id,
+            'employee_name': p.employee_id.name,
+            'employee_code': p.employee_id.employee_code,
+            'department_name': p.employee_id.department_name,
+            'basic_salary': p.basic_salary,
+            'hra': p.hra,
+            'special_allowance': p.special_allowance,
+            'deductions': p.deductions,
+            'gross_salary': p.gross_salary,
+            'net_salary': p.net_salary,
+            'payment_frequency': p.payment_frequency,
+            'last_updated': p.last_updated.strftime('%Y-%m-%d %H:%M:%S') if p.last_updated else None,
+        } for p in payrolls]
+
+        return json_response(data=data)
+
     @http.route('/api/payroll/update', type='http', auth='user', methods=['PUT', 'OPTIONS'], csrf=False, cors='*')
     def update_salary(self, **kwargs):
         """HR endpoint to update employee salary structure."""
         if request.httprequest.method == 'OPTIONS':
             return options_response()
 
-        user = request.env.user
-        if not (user.has_group('backend.group_dayflow_hr') or user.has_group('dayflow.group_dayflow_hr') or user.id == 1):
+        if not is_hr_user(request.env.user):
             return json_response(success=False, status=403, message='Access denied: HR privileges required.')
 
         body = get_json_body()
@@ -79,14 +106,9 @@ class DayflowPayrollController(http.Controller):
         payroll = request.env['dayflow.payroll'].search([('employee_id', '=', int(employee_id))], limit=1)
 
         vals = {'last_updated': fields.Datetime.now()}
-        if 'basic_salary' in body:
-            vals['basic_salary'] = float(body['basic_salary'])
-        if 'hra' in body:
-            vals['hra'] = float(body['hra'])
-        if 'special_allowance' in body:
-            vals['special_allowance'] = float(body['special_allowance'])
-        if 'deductions' in body:
-            vals['deductions'] = float(body['deductions'])
+        for field in ['basic_salary', 'hra', 'special_allowance', 'deductions']:
+            if field in body:
+                vals[field] = float(body[field])
         if 'payment_frequency' in body:
             vals['payment_frequency'] = body['payment_frequency']
 
@@ -99,6 +121,7 @@ class DayflowPayrollController(http.Controller):
         return json_response(
             data={
                 'employee_id': payroll.employee_id.id,
+                'basic_salary': payroll.basic_salary,
                 'gross_salary': payroll.gross_salary,
                 'net_salary': payroll.net_salary,
             },

@@ -3,7 +3,7 @@ from datetime import datetime, date
 import logging
 from odoo import http, fields
 from odoo.http import request
-from .common import json_response, options_response, get_json_body
+from .common import json_response, options_response, get_json_body, is_hr_user
 
 _logger = logging.getLogger(__name__)
 
@@ -163,31 +163,57 @@ class DayflowAttendanceController(http.Controller):
         return json_response(data=data)
 
     @http.route('/api/attendance/company', type='http', auth='user', methods=['GET', 'OPTIONS'], csrf=False, cors='*')
-    def get_company_attendance(self, target_date=None, **kwargs):
-        """HR endpoint to view company-wide daily attendance logs."""
+    def get_company_attendance(self, target_date=None, department=None, **kwargs):
+        """HR endpoint to view company-wide attendance logs with date & department filters."""
         if request.httprequest.method == 'OPTIONS':
             return options_response()
 
-        user = request.env.user
-        if not (user.has_group('backend.group_dayflow_hr') or user.has_group('dayflow.group_dayflow_hr') or user.id == 1):
-            return json_response(success=False, status=403, message='HR permissions required.')
+        if not is_hr_user(request.env.user):
+            return json_response(success=False, status=403, message='Access denied: HR privileges required.')
 
-        query_date = target_date or str(fields.Date.today())
-        records = request.env['dayflow.attendance'].search(
-            [('date', '=', query_date)],
-            order='check_in desc'
-        )
+        query_date = target_date or kwargs.get('date') or str(fields.Date.today())
+        emp_domain = [('status', '=', 'active')]
+        if department or kwargs.get('department'):
+            emp_domain.append(('department_name', 'ilike', department or kwargs.get('department')))
 
-        data = [{
-            'id': rec.id,
-            'employee_name': rec.employee_id.name,
-            'employee_code': rec.employee_id.employee_code,
-            'department_name': rec.employee_id.department_name,
-            'date': str(rec.date),
-            'check_in': rec.check_in.strftime('%H:%M:%S') if rec.check_in else None,
-            'check_out': rec.check_out.strftime('%H:%M:%S') if rec.check_out else None,
-            'worked_hours': rec.worked_hours,
-            'state': rec.state,
-        } for rec in records]
+        employees = request.env['dayflow.employee'].search(emp_domain)
+        attendances = request.env['dayflow.attendance'].search([
+            ('date', '=', query_date),
+            ('employee_id', 'in', employees.ids)
+        ])
+
+        att_by_emp = {att.employee_id.id: att for att in attendances}
+
+        data = []
+        for emp in employees:
+            att = att_by_emp.get(emp.id)
+            if att:
+                data.append({
+                    'id': att.id,
+                    'employee_id': emp.id,
+                    'employee_name': emp.name,
+                    'employee_code': emp.employee_code,
+                    'department_name': emp.department_name,
+                    'date': str(att.date),
+                    'check_in': att.check_in.strftime('%H:%M:%S') if att.check_in else None,
+                    'check_out': att.check_out.strftime('%H:%M:%S') if att.check_out else None,
+                    'worked_hours': att.worked_hours,
+                    'state': att.state,
+                    'remarks': att.remarks or '',
+                })
+            else:
+                data.append({
+                    'id': None,
+                    'employee_id': emp.id,
+                    'employee_name': emp.name,
+                    'employee_code': emp.employee_code,
+                    'department_name': emp.department_name,
+                    'date': query_date,
+                    'check_in': None,
+                    'check_out': None,
+                    'worked_hours': 0.0,
+                    'state': 'absent',
+                    'remarks': 'Not checked in',
+                })
 
         return json_response(data=data)
