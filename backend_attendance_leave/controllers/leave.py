@@ -139,9 +139,12 @@ class DayflowLeaveController(http.Controller):
 
         return json_response(data=data)
 
-    @http.route('/api/leave/pending', type='http', auth='user', methods=['GET', 'OPTIONS'], csrf=False, cors='*')
+    @http.route(['/api/leave/pending-approvals', '/api/leave/pending'], type='http', auth='user', methods=['GET', 'OPTIONS'], csrf=False, cors='*')
     def get_pending_leaves(self, **kwargs):
-        """HR endpoint to fetch all pending leave requests requiring approval."""
+        """
+        HR endpoint to fetch all pending leave requests requiring approval.
+        Strictly restricted to HR / Admin users.
+        """
         if request.httprequest.method == 'OPTIONS':
             return options_response()
 
@@ -174,14 +177,20 @@ class DayflowLeaveController(http.Controller):
             'duration_days': req.duration_days,
             'name': req.remarks,
             'remarks': req.remarks,
+            'state': req.state,
+            'approved_by': req.approved_by.id if req.approved_by else None,
+            'hr_comments': req.hr_comments or req.manager_remarks or '',
             'created_at': req.create_date.strftime('%Y-%m-%d %H:%M:%S') if req.create_date else None,
         } for req in pending_requests]
 
         return json_response(data=data)
 
-    @http.route('/api/leave/action', type='http', auth='user', methods=['POST', 'OPTIONS'], csrf=False, cors='*')
-    def process_leave_action(self, **kwargs):
-        """HR action handler to approve or reject a leave request (Reserved for Phase 6)."""
+    @http.route('/api/leave/approve', type='http', auth='user', methods=['POST', 'OPTIONS'], csrf=False, cors='*')
+    def approve_leave(self, **kwargs):
+        """
+        HR action handler to approve a pending leave request.
+        Strictly verifies HR permission, ensures pending state, and tracks reviewer.
+        """
         if request.httprequest.method == 'OPTIONS':
             return options_response()
 
@@ -196,33 +205,136 @@ class DayflowLeaveController(http.Controller):
 
         body = get_json_body()
         leave_id = body.get('leave_id')
-        action = body.get('action')  # 'approve' or 'reject'
-        comments = (body.get('comments') or '').strip()
+        comments = (body.get('hr_comments') or body.get('comments') or '').strip()
 
-        if not leave_id or action not in ('approve', 'reject'):
-            return json_response(
-                success=False,
-                status=400,
-                message="Invalid request. Provide 'leave_id' and 'action' ('approve' or 'reject')."
-            )
+        if not leave_id:
+            return json_response(success=False, status=400, message="Missing required parameter: 'leave_id'.")
 
-        leave_req = request.env['dayflow.leave'].browse(int(leave_id))
+        try:
+            leave_id_int = int(leave_id)
+        except (ValueError, TypeError):
+            return json_response(success=False, status=400, message="Invalid 'leave_id' format. Must be an integer.")
+
+        leave_req = request.env['dayflow.leave'].browse(leave_id_int)
         if not leave_req.exists():
             return json_response(success=False, status=404, message='Leave request not found.')
 
-        if action == 'approve':
-            leave_req.action_approve(comments=comments)
-            msg = f"Leave request for {leave_req.employee_id.name} has been APPROVED."
-        else:
-            leave_req.action_reject(comments=comments)
-            msg = f"Leave request for {leave_req.employee_id.name} has been REJECTED."
+        if leave_req.state != 'pending':
+            return json_response(
+                success=False,
+                status=400,
+                message=f"Cannot approve leave request in '{leave_req.state}' state. Only pending requests can be approved."
+            )
 
+        try:
+            leave_req.action_approve(comments=comments)
+            return json_response(
+                data={
+                    'id': leave_req.id,
+                    'employee_id': leave_req.employee_id.id,
+                    'employee_name': leave_req.employee_id.name,
+                    'leave_type': leave_req.leave_type,
+                    'request_date_from': str(leave_req.date_from),
+                    'request_date_to': str(leave_req.date_to),
+                    'date_from': str(leave_req.date_from),
+                    'date_to': str(leave_req.date_to),
+                    'number_of_days': leave_req.duration_days,
+                    'duration_days': leave_req.duration_days,
+                    'name': leave_req.remarks,
+                    'remarks': leave_req.remarks,
+                    'state': leave_req.state,
+                    'approved_by': leave_req.approved_by.id if leave_req.approved_by else user.id,
+                    'hr_comments': leave_req.hr_comments or '',
+                },
+                message=f"Leave request for {leave_req.employee_id.name} has been APPROVED."
+            )
+        except Exception as e:
+            return json_response(success=False, status=400, message=str(e))
+
+    @http.route('/api/leave/reject', type='http', auth='user', methods=['POST', 'OPTIONS'], csrf=False, cors='*')
+    def reject_leave(self, **kwargs):
+        """
+        HR action handler to reject a pending leave request.
+        Requires HR comments explaining the rejection reason.
+        """
+        if request.httprequest.method == 'OPTIONS':
+            return options_response()
+
+        user = request.env.user
+        is_hr = (
+            user.has_group('dayflow.group_dayflow_hr') or
+            user.has_group('backend_attendance_leave.group_dayflow_hr') or
+            user.id == 1
+        )
+        if not is_hr:
+            return json_response(success=False, status=403, message='Access denied: HR privileges required.')
+
+        body = get_json_body()
+        leave_id = body.get('leave_id')
+        comments = (body.get('hr_comments') or body.get('comments') or '').strip()
+
+        if not leave_id:
+            return json_response(success=False, status=400, message="Missing required parameter: 'leave_id'.")
+
+        if not comments:
+            return json_response(
+                success=False,
+                status=400,
+                message="HR comments explaining the reason for rejection are required."
+            )
+
+        try:
+            leave_id_int = int(leave_id)
+        except (ValueError, TypeError):
+            return json_response(success=False, status=400, message="Invalid 'leave_id' format. Must be an integer.")
+
+        leave_req = request.env['dayflow.leave'].browse(leave_id_int)
+        if not leave_req.exists():
+            return json_response(success=False, status=404, message='Leave request not found.')
+
+        if leave_req.state != 'pending':
+            return json_response(
+                success=False,
+                status=400,
+                message=f"Cannot reject leave request in '{leave_req.state}' state. Only pending requests can be rejected."
+            )
+
+        try:
+            leave_req.action_reject(comments=comments)
+            return json_response(
+                data={
+                    'id': leave_req.id,
+                    'employee_id': leave_req.employee_id.id,
+                    'employee_name': leave_req.employee_id.name,
+                    'leave_type': leave_req.leave_type,
+                    'request_date_from': str(leave_req.date_from),
+                    'request_date_to': str(leave_req.date_to),
+                    'date_from': str(leave_req.date_from),
+                    'date_to': str(leave_req.date_to),
+                    'number_of_days': leave_req.duration_days,
+                    'duration_days': leave_req.duration_days,
+                    'name': leave_req.remarks,
+                    'remarks': leave_req.remarks,
+                    'state': leave_req.state,
+                    'approved_by': leave_req.approved_by.id if leave_req.approved_by else user.id,
+                    'hr_comments': leave_req.hr_comments or '',
+                },
+                message=f"Leave request for {leave_req.employee_id.name} has been REJECTED."
+            )
+        except Exception as e:
+            return json_response(success=False, status=400, message=str(e))
+
+    @http.route('/api/leave/action', type='http', auth='user', methods=['POST', 'OPTIONS'], csrf=False, cors='*')
+    def process_leave_action(self, **kwargs):
+        """Backward-compatible action router for approve / reject."""
+        body = get_json_body()
+        action = body.get('action')
+        if action == 'approve':
+            return self.approve_leave(**kwargs)
+        elif action == 'reject':
+            return self.reject_leave(**kwargs)
         return json_response(
-            data={
-                'id': leave_req.id,
-                'state': leave_req.state,
-                'hr_comments': leave_req.hr_comments,
-                'manager_remarks': leave_req.manager_remarks,
-            },
-            message=msg
+            success=False,
+            status=400,
+            message="Invalid request. Provide 'action' ('approve' or 'reject')."
         )
