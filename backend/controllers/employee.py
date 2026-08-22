@@ -2,7 +2,7 @@
 import logging
 from odoo import http
 from odoo.http import request
-from .common import json_response, options_response, get_json_body
+from .common import json_response, options_response, get_json_body, is_hr_user
 
 _logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ class DayflowEmployeeController(http.Controller):
             return options_response()
 
         user = request.env.user
-        is_hr = user.has_group('backend.group_dayflow_hr') or user.has_group('dayflow.group_dayflow_hr') or user.id == 1
+        is_hr = is_hr_user(user)
 
         if employee_id and is_hr:
             employee = request.env['dayflow.employee'].browse(int(employee_id))
@@ -50,7 +50,7 @@ class DayflowEmployeeController(http.Controller):
 
         body = get_json_body()
         user = request.env.user
-        is_hr = user.has_group('backend.group_dayflow_hr') or user.has_group('dayflow.group_dayflow_hr') or user.id == 1
+        is_hr = is_hr_user(user)
 
         target_emp_id = body.get('employee_id')
         if target_emp_id and is_hr:
@@ -89,16 +89,24 @@ class DayflowEmployeeController(http.Controller):
             return json_response(success=False, status=400, message=str(e))
 
     @http.route('/api/employee/list', type='http', auth='user', methods=['GET', 'OPTIONS'], csrf=False, cors='*')
-    def get_employee_list(self, **kwargs):
-        """HR endpoint to retrieve list of all company employees."""
+    def get_employee_list(self, search=None, department=None, **kwargs):
+        """HR endpoint to retrieve list of all company employees with search & filter support."""
         if request.httprequest.method == 'OPTIONS':
             return options_response()
 
-        user = request.env.user
-        if not (user.has_group('backend.group_dayflow_hr') or user.has_group('dayflow.group_dayflow_hr') or user.id == 1):
+        if not is_hr_user(request.env.user):
             return json_response(success=False, status=403, message='Access denied: HR privileges required.')
 
-        employees = request.env['dayflow.employee'].search([])
+        domain = []
+        search_query = search or kwargs.get('search')
+        dept_query = department or kwargs.get('department')
+
+        if search_query:
+            domain.extend(['|', ('name', 'ilike', search_query), ('employee_code', 'ilike', search_query)])
+        if dept_query:
+            domain.append(('department_name', 'ilike', dept_query))
+
+        employees = request.env['dayflow.employee'].search(domain)
         emp_list = [{
             'id': emp.id,
             'name': emp.name,
@@ -109,6 +117,7 @@ class DayflowEmployeeController(http.Controller):
             'department_name': emp.department_name or '',
             'status': emp.status,
             'join_date': str(emp.join_date) if emp.join_date else '',
+            'has_photo': bool(emp.image_1920),
         } for emp in employees]
 
         return json_response(data=emp_list)

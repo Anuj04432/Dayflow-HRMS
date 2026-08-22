@@ -3,7 +3,7 @@ from datetime import datetime, date
 import logging
 from odoo import http, fields
 from odoo.http import request
-from .common import json_response, options_response
+from .common import json_response, options_response, is_hr_user
 
 _logger = logging.getLogger(__name__)
 
@@ -58,10 +58,11 @@ class DayflowDashboardController(http.Controller):
                 'department_name': employee.department_name,
             },
             'attendance': {
-                'today_status': 'checked_out' if (today_att and today_att.check_out) else ('checked_in' if today_att else 'not_checked_in'),
+                'today_status': 'checked_out' if (today_att and today_att.check_out) else ('checked_in' if (today_att and today_att.state != 'leave') else ('on_leave' if (today_att and today_att.state == 'leave') else 'not_checked_in')),
                 'check_in': today_att.check_in.strftime('%H:%M:%S') if (today_att and today_att.check_in) else None,
                 'check_out': today_att.check_out.strftime('%H:%M:%S') if (today_att and today_att.check_out) else None,
                 'worked_hours': today_att.worked_hours if today_att else 0.0,
+                'state': today_att.state if today_att else 'absent',
             },
             'leaves': {
                 'pending_count': pending_leaves,
@@ -89,8 +90,7 @@ class DayflowDashboardController(http.Controller):
         if request.httprequest.method == 'OPTIONS':
             return options_response()
 
-        user = request.env.user
-        if not (user.has_group('backend.group_dayflow_hr') or user.has_group('dayflow.group_dayflow_hr') or user.id == 1):
+        if not is_hr_user(request.env.user):
             return json_response(success=False, status=403, message='Access denied: HR privileges required.')
 
         today = fields.Date.today()
@@ -99,7 +99,8 @@ class DayflowDashboardController(http.Controller):
         # Attendance counts for today
         today_attendances = request.env['dayflow.attendance'].search([('date', '=', today)])
         present_count = len(today_attendances.filtered(lambda a: a.state in ('present', 'half_day')))
-        absent_count = max(0, total_employees - present_count)
+        leave_count = len(today_attendances.filtered(lambda a: a.state == 'leave'))
+        absent_count = max(0, total_employees - present_count - leave_count)
 
         # Pending approvals
         pending_leaves_count = request.env['dayflow.leave'].search_count([('state', '=', 'pending')])
@@ -117,6 +118,7 @@ class DayflowDashboardController(http.Controller):
             'metrics': {
                 'total_employees': total_employees,
                 'present_today': present_count,
+                'on_leave_today': leave_count,
                 'absent_today': absent_count,
                 'pending_leave_approvals': pending_leaves_count,
                 'total_monthly_payroll': total_payroll_expenditure,
@@ -169,8 +171,7 @@ class DayflowDashboardController(http.Controller):
         if request.httprequest.method == 'OPTIONS':
             return options_response()
 
-        user = request.env.user
-        if not (user.has_group('backend.group_dayflow_hr') or user.has_group('dayflow.group_dayflow_hr') or user.id == 1):
+        if not is_hr_user(request.env.user):
             return json_response(success=False, status=403, message='Access denied: HR privileges required.')
 
         total_emp = request.env['dayflow.employee'].search_count([('status', '=', 'active')])

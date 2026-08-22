@@ -3,7 +3,7 @@ from datetime import datetime, date
 import logging
 from odoo import http, fields
 from odoo.http import request
-from .common import json_response, options_response, get_json_body
+from .common import json_response, options_response, get_json_body, is_hr_user
 
 _logger = logging.getLogger(__name__)
 
@@ -115,8 +115,7 @@ class DayflowLeaveController(http.Controller):
         if request.httprequest.method == 'OPTIONS':
             return options_response()
 
-        user = request.env.user
-        if not (user.has_group('backend.group_dayflow_hr') or user.has_group('dayflow.group_dayflow_hr') or user.id == 1):
+        if not is_hr_user(request.env.user):
             return json_response(success=False, status=403, message='Access denied: HR privileges required.')
 
         pending_requests = request.env['dayflow.leave'].search(
@@ -139,14 +138,42 @@ class DayflowLeaveController(http.Controller):
 
         return json_response(data=data)
 
+    @http.route('/api/leave/all-history', type='http', auth='user', methods=['GET', 'OPTIONS'], csrf=False, cors='*')
+    def get_all_leave_history(self, **kwargs):
+        """HR endpoint to fetch all historical leave logs company-wide."""
+        if request.httprequest.method == 'OPTIONS':
+            return options_response()
+
+        if not is_hr_user(request.env.user):
+            return json_response(success=False, status=403, message='Access denied: HR privileges required.')
+
+        all_leaves = request.env['dayflow.leave'].search([], order='create_date desc')
+
+        data = [{
+            'id': req.id,
+            'employee_id': req.employee_id.id,
+            'employee_name': req.employee_id.name,
+            'employee_code': req.employee_id.employee_code,
+            'department_name': req.employee_id.department_name,
+            'leave_type': req.leave_type,
+            'date_from': str(req.date_from),
+            'date_to': str(req.date_to),
+            'duration_days': req.duration_days,
+            'remarks': req.remarks,
+            'state': req.state,
+            'manager_remarks': req.manager_remarks or '',
+            'created_at': req.create_date.strftime('%Y-%m-%d %H:%M:%S') if req.create_date else None,
+        } for req in all_leaves]
+
+        return json_response(data=data)
+
     @http.route('/api/leave/action', type='http', auth='user', methods=['POST', 'OPTIONS'], csrf=False, cors='*')
     def process_leave_action(self, **kwargs):
         """HR action handler to approve or reject a leave request."""
         if request.httprequest.method == 'OPTIONS':
             return options_response()
 
-        user = request.env.user
-        if not (user.has_group('backend.group_dayflow_hr') or user.has_group('dayflow.group_dayflow_hr') or user.id == 1):
+        if not is_hr_user(request.env.user):
             return json_response(success=False, status=403, message='Access denied: HR privileges required.')
 
         body = get_json_body()
@@ -159,6 +186,13 @@ class DayflowLeaveController(http.Controller):
                 success=False,
                 status=400,
                 message="Invalid request. Provide 'leave_id' and 'action' ('approve' or 'reject')."
+            )
+
+        if action == 'reject' and not comments:
+            return json_response(
+                success=False,
+                status=400,
+                message="HR comments are required when rejecting a leave request."
             )
 
         leave_req = request.env['dayflow.leave'].browse(int(leave_id))
