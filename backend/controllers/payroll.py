@@ -20,7 +20,7 @@ class DayflowPayrollController(http.Controller):
             return options_response()
 
         user = request.env.user
-        is_hr = user.has_group('dayflow.group_dayflow_hr') or user.id == 1
+        is_hr = user.has_group('backend.group_dayflow_hr') or user.has_group('dayflow.group_dayflow_hr') or user.id == 1
 
         if employee_id and is_hr:
             employee = request.env['dayflow.employee'].browse(int(employee_id))
@@ -67,7 +67,7 @@ class DayflowPayrollController(http.Controller):
             return options_response()
 
         user = request.env.user
-        if not (user.has_group('dayflow.group_dayflow_hr') or user.id == 1):
+        if not (user.has_group('backend.group_dayflow_hr') or user.has_group('dayflow.group_dayflow_hr') or user.id == 1):
             return json_response(success=False, status=403, message='Access denied: HR privileges required.')
 
         body = get_json_body()

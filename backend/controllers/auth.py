@@ -48,7 +48,7 @@ class DayflowAuthController(http.Controller):
             employee = user.dayflow_employee_id or request.env['dayflow.employee'].sudo().search([('user_id', '=', user.id)], limit=1)
             
             # Determine effective role
-            role = 'hr' if user.has_group('dayflow.group_dayflow_hr') or user.id == 1 else 'employee'
+            role = 'hr' if (user.has_group('backend.group_dayflow_hr') or user.has_group('dayflow.group_dayflow_hr') or user.id == 1) else 'employee'
 
             user_data = {
                 'user_id': user.id,
@@ -115,11 +115,11 @@ class DayflowAuthController(http.Controller):
 
             # Assign group
             if role == 'hr':
-                hr_group = env.ref('dayflow.group_dayflow_hr', raise_if_not_found=False)
+                hr_group = env.ref('backend.group_dayflow_hr', raise_if_not_found=False) or env.ref('dayflow.group_dayflow_hr', raise_if_not_found=False)
                 if hr_group:
                     hr_group.sudo().write({'users': [(4, new_user.id)]})
             else:
-                emp_group = env.ref('dayflow.group_dayflow_employee', raise_if_not_found=False)
+                emp_group = env.ref('backend.group_dayflow_employee', raise_if_not_found=False) or env.ref('dayflow.group_dayflow_employee', raise_if_not_found=False)
                 if emp_group:
                     emp_group.sudo().write({'users': [(4, new_user.id)]})
 
@@ -200,7 +200,7 @@ class DayflowAuthController(http.Controller):
 
         user = request.env.user
         employee = user.dayflow_employee_id or request.env['dayflow.employee'].sudo().search([('user_id', '=', user.id)], limit=1)
-        role = 'hr' if user.has_group('dayflow.group_dayflow_hr') or user.id == 1 else 'employee'
+        role = 'hr' if (user.has_group('backend.group_dayflow_hr') or user.has_group('dayflow.group_dayflow_hr') or user.id == 1) else 'employee'
 
         return json_response(data={
             'user_id': user.id,
