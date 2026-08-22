@@ -108,7 +108,13 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
         parsed_path = self.path.split('?')
         path = parsed_path[0]
 
-        if path == '/api/auth/me':
+        if path in ('/', '/api', '/api/health'):
+            self._send_json(
+                data={'status': 'online', 'service': 'Dayflow HRMS API', 'port': 8069},
+                message='Dayflow HRMS Backend API Server is running and healthy!'
+            )
+
+        elif path == '/api/auth/me':
             user = DB['users'][-1]
             self._send_json(data={
                 'user_id': user['id'],
@@ -250,6 +256,15 @@ class DayflowMockHandler(BaseHTTPRequestHandler):
             self._send_json(data=[
                 {'id': 'notif_1', 'title': 'Welcome to Dayflow', 'message': 'System setup complete.', 'type': 'info'}
             ])
+
+        elif path == '/api/reports/attendance':
+            self._send_json(data={
+                'total_employees': len(DB['employees']),
+                'total_attendance_records': len(DB['attendance']),
+                'total_leaves_approved': len([l for l in DB['leaves'] if l['state'] == 'approved']),
+                'avg_worked_hours_per_day': 8.0,
+                'attendance_rate_percent': 95.0
+            })
         else:
             self._send_json(success=False, status=404, message=f'Route {path} not found.')
 

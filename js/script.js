@@ -728,7 +728,7 @@ function handleLeaveAction(leaveId, action) {
 
 
 /* =========================================================
-   PAYROLL (EMPLOYEE PAYSLIP & HR COMPANY PAYROLL)
+   PAYROLL (EMPLOYEE PAYSLIP & HR COMPANY PAYROLL - LIVE API)
 ========================================================= */
 
 function setupPayrollPage(user) {
@@ -745,62 +745,189 @@ function setupPayrollPage(user) {
     } else {
         if (empSection) empSection.classList.remove("hidden");
         if (hrSection) hrSection.classList.add("hidden");
-        renderPersonalPayroll(user);
+        renderPersonalPayroll();
     }
 }
 
-function renderPersonalPayroll(user) {
-    const basicElem = document.getElementById("payrollBasic");
-    const allowElem = document.getElementById("payrollAllowances");
-    const deductElem = document.getElementById("payrollDeductions");
-    const netElem = document.getElementById("payrollNet");
+async function renderPersonalPayroll() {
+    let p = null;
+    try {
+        const res = await apiFetch('/api/payroll/salary-info');
+        if (res && res.success && res.data) {
+            p = res.data;
+        }
+    } catch (err) {
+        console.warn("Offline payroll fallback triggered", err);
+    }
 
-    const basic = user.basic_salary || 35000;
-    const allowances = (user.hra || 8000) + (user.allowances || 5000);
-    const deductions = user.deductions || 2000;
-    const net = basic + allowances - deductions;
+    const user = getCurrentUser() || {};
+    const basic = p ? (p.basic_salary || 0) : (user.basic_salary || 35000);
+    const hra = p ? (p.hra || 0) : (user.hra || 8000);
+    const allowance = p ? (p.special_allowance || 0) : (user.allowances || 5000);
+    const deductions = p ? (p.deductions || 0) : (user.deductions || 2000);
+    const net = p ? (p.net_salary || 0) : (basic + hra + allowance - deductions);
 
-    if (basicElem) basicElem.textContent = `₹${basic.toLocaleString()}`;
-    if (allowElem) allowElem.textContent = `₹${allowances.toLocaleString()}`;
-    if (deductElem) deductElem.textContent = `₹${deductions.toLocaleString()}`;
-    if (netElem) netElem.textContent = `₹${net.toLocaleString()}`;
+    // Update Summary KPI Cards
+    if (document.getElementById("payrollBasic")) document.getElementById("payrollBasic").textContent = `₹${basic.toLocaleString()}`;
+    if (document.getElementById("payrollAllowances")) document.getElementById("payrollAllowances").textContent = `₹${(hra + allowance).toLocaleString()}`;
+    if (document.getElementById("payrollDeductions")) document.getElementById("payrollDeductions").textContent = `₹${deductions.toLocaleString()}`;
+    if (document.getElementById("payrollNet")) document.getElementById("payrollNet").textContent = `₹${net.toLocaleString()}`;
+
+    // Update Breakdown Table
+    if (document.getElementById("tblBasic")) document.getElementById("tblBasic").textContent = `₹${basic.toLocaleString()}`;
+    if (document.getElementById("tblHRA")) document.getElementById("tblHRA").textContent = `₹${hra.toLocaleString()}`;
+    if (document.getElementById("tblAllowances")) document.getElementById("tblAllowances").textContent = `₹${allowance.toLocaleString()}`;
+    if (document.getElementById("tblDeductions")) document.getElementById("tblDeductions").textContent = `-₹${deductions.toLocaleString()}`;
+    if (document.getElementById("tblNet")) document.getElementById("tblNet").textContent = `₹${net.toLocaleString()}`;
 }
 
-function renderHRCompanyPayroll() {
+async function renderHRCompanyPayroll() {
     const tbody = document.querySelector("#hrPayrollTable tbody");
     if (!tbody) return;
 
-    const users = JSON.parse(localStorage.getItem("dayflow_users") || "[]");
-    tbody.innerHTML = "";
+    let payrollList = [];
+    try {
+        const res = await apiFetch('/api/payroll/company');
+        if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
+            payrollList = res.data;
+        }
+    } catch (err) {
+        console.warn("Offline HR payroll fallback", err);
+    }
 
-    users.forEach(u => {
-        const basic = u.basic_salary || 35000;
-        const allowances = (u.hra || 8000) + (u.allowances || 5000);
-        const deductions = u.deductions || 2000;
-        const net = basic + allowances - deductions;
+    if (payrollList.length === 0) {
+        const users = JSON.parse(localStorage.getItem("dayflow_users") || "[]");
+        payrollList = users.map(u => ({
+            employee_id: u.employee_id || u.user_id || 1,
+            employee_name: u.name,
+            employee_code: u.employee_code || "DF0001",
+            department_name: u.department || "General",
+            basic_salary: u.basic_salary || 35000,
+            hra: u.hra || 8000,
+            special_allowance: u.allowances || 5000,
+            deductions: u.deductions || 2000,
+            net_salary: (u.basic_salary || 35000) + (u.hra || 8000) + (u.allowances || 5000) - (u.deductions || 2000)
+        }));
+    }
+
+    tbody.innerHTML = "";
+    payrollList.forEach(p => {
+        const basic = Number(p.basic_salary) || 0;
+        const hra = Number(p.hra) || 0;
+        const allowance = Number(p.special_allowance) || 0;
+        const deductions = Number(p.deductions) || 0;
+        const net = Number(p.net_salary) || (basic + hra + allowance - deductions);
 
         const tr = document.createElement("tr");
         tr.innerHTML = `
-            <td><strong>${u.name}</strong> <small style="color:#6b7280;">(${u.employee_code})</small></td>
-            <td>${u.department}</td>
+            <td><strong>${p.employee_name}</strong> <small style="color:#6b7280;">(${p.employee_code})</small></td>
+            <td>${p.department_name || 'General'}</td>
             <td>₹${basic.toLocaleString()}</td>
-            <td>₹${allowances.toLocaleString()}</td>
-            <td>-₹${deductions.toLocaleString()}</td>
+            <td>₹${(hra + allowance).toLocaleString()}</td>
+            <td style="color:#dc2626;">-₹${deductions.toLocaleString()}</td>
             <td><strong style="color:#4f46e5;">₹${net.toLocaleString()}</strong></td>
             <td>
-                <button type="button" class="secondary-btn" style="padding: 5px 10px; font-size: 12px;" onclick="downloadSalarySlipForUser('${u.email}')">Payslip</button>
+                <button type="button" class="secondary-btn" style="padding: 4px 8px; font-size: 12px;" onclick="openSalaryEditModal(${p.employee_id}, '${(p.employee_name || '').replace(/'/g, "\\'")}', ${basic}, ${hra}, ${allowance}, ${deductions})">✏️ Edit</button>
+                <button type="button" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; margin-left: 4px;" onclick="downloadSalarySlipForUser('${(p.employee_name || '').replace(/'/g, "\\'")}', '${p.employee_code}', ${basic}, ${hra}, ${allowance}, ${deductions})">Payslip</button>
             </td>
         `;
         tbody.appendChild(tr);
     });
 }
 
-function downloadSalarySlipForUser(email) {
+function openSalaryEditModal(employeeId, employeeName, basic, hra, allowance, deductions) {
+    const modal = document.createElement("div");
+    modal.className = "dayflow-modal";
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Update Salary: ${employeeName}</h3>
+                <button type="button" class="modal-close-btn" onclick="this.closest('.dayflow-modal').remove()">×</button>
+            </div>
+            <div class="modal-body">
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <div>
+                        <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Basic Salary (INR)</label>
+                        <input type="number" id="editBasicSalary" value="${basic}" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">House Rent Allowance (HRA)</label>
+                        <input type="number" id="editHra" value="${hra}" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Special Allowance</label>
+                        <input type="number" id="editSpecialAllowance" value="${allowance}" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Total Deductions (Tax / PF)</label>
+                        <input type="number" id="editDeductions" value="${deductions}" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px;">
+                <button type="button" class="secondary-btn" onclick="this.closest('.dayflow-modal').remove()">Cancel</button>
+                <button type="button" class="primary-btn" style="width: auto;" onclick="submitSalaryUpdate(${employeeId})">Save Salary</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+async function submitSalaryUpdate(employeeId) {
+    const basic = parseFloat(document.getElementById("editBasicSalary")?.value || 0);
+    const hra = parseFloat(document.getElementById("editHra")?.value || 0);
+    const allowance = parseFloat(document.getElementById("editSpecialAllowance")?.value || 0);
+    const deductions = parseFloat(document.getElementById("editDeductions")?.value || 0);
+
+    const res = await apiFetch('/api/payroll/update', 'PUT', {
+        employee_id: employeeId,
+        basic_salary: basic,
+        hra: hra,
+        special_allowance: allowance,
+        deductions: deductions
+    });
+
+    // Update localStorage for full offline sync
     const users = JSON.parse(localStorage.getItem("dayflow_users") || "[]");
-    const targetUser = users.find(u => u.email === email);
-    if (targetUser) {
-        showSalarySlipModal(targetUser);
+    const idx = users.findIndex(u => (u.employee_id === employeeId || u.user_id === employeeId));
+    if (idx !== -1) {
+        users[idx].basic_salary = basic;
+        users[idx].hra = hra;
+        users[idx].allowances = allowance;
+        users[idx].deductions = deductions;
+        localStorage.setItem("dayflow_users", JSON.stringify(users));
     }
+
+    if (res && res.success) {
+        alert("✅ Salary structure updated successfully!");
+        document.querySelector(".dayflow-modal")?.remove();
+        renderHRCompanyPayroll();
+    } else if (res && !res.fallback && !res.success) {
+        alert("❌ Failed to update salary: " + (res.message || "Unknown error"));
+    } else {
+        alert("✅ Salary structure updated locally!");
+        document.querySelector(".dayflow-modal")?.remove();
+        renderHRCompanyPayroll();
+    }
+}
+
+function downloadSalarySlipForUser(nameOrEmail, code, basic, hra, allowance, deductions) {
+    if (typeof nameOrEmail === 'string' && nameOrEmail.includes('@')) {
+        const users = JSON.parse(localStorage.getItem("dayflow_users") || "[]");
+        const targetUser = users.find(u => u.email === nameOrEmail);
+        if (targetUser) {
+            showSalarySlipModal(targetUser);
+            return;
+        }
+    }
+    showSalarySlipModal({
+        name: nameOrEmail || "Employee",
+        employee_code: code || "DF0002",
+        basic_salary: basic || 35000,
+        hra: hra || 0,
+        allowances: allowance || 0,
+        deductions: deductions || 0
+    });
 }
 
 function downloadSalarySlip() {
@@ -809,8 +936,12 @@ function downloadSalarySlip() {
 }
 
 function showSalarySlipModal(user) {
-    const gross = (user.basic_salary || 35000) + (user.hra || 8000) + (user.allowances || 5000);
-    const net = gross - (user.deductions || 2000);
+    const basic = user.basic_salary || 35000;
+    const hra = user.hra || 8000;
+    const allowances = user.allowances || user.special_allowance || 5000;
+    const deductions = user.deductions || 2000;
+    const gross = basic + hra + allowances;
+    const net = gross - deductions;
 
     const modal = document.createElement("div");
     modal.className = "dayflow-modal";
@@ -824,9 +955,9 @@ function showSalarySlipModal(user) {
                 <p><strong>Employee:</strong> ${user.name} (${user.employee_code || 'DF0002'})</p>
                 <p><strong>Pay Period:</strong> August 2026</p>
                 <hr style="margin: 15px 0; border: 0; border-top: 1px solid #e5e7eb;">
-                <div style="display: flex; justify-content: space-between;"><span>Basic Salary:</span><strong>₹${(user.basic_salary || 35000).toLocaleString()}</strong></div>
-                <div style="display: flex; justify-content: space-between;"><span>HRA & Allowances:</span><strong>₹${((user.hra || 8000) + (user.allowances || 5000)).toLocaleString()}</strong></div>
-                <div style="display: flex; justify-content: space-between; color: #dc2626;"><span>Deductions (Tax/PF):</span><strong>-₹${(user.deductions || 2000).toLocaleString()}</strong></div>
+                <div style="display: flex; justify-content: space-between;"><span>Basic Salary:</span><strong>₹${basic.toLocaleString()}</strong></div>
+                <div style="display: flex; justify-content: space-between;"><span>HRA & Allowances:</span><strong>₹${(hra + allowances).toLocaleString()}</strong></div>
+                <div style="display: flex; justify-content: space-between; color: #dc2626;"><span>Deductions (Tax/PF):</span><strong>-₹${deductions.toLocaleString()}</strong></div>
                 <hr style="margin: 15px 0; border: 0; border-top: 1px solid #e5e7eb;">
                 <div style="display: flex; justify-content: space-between; font-size: 16px; color: #4f46e5;"><span><strong>Net Salary Paid:</strong></span><strong>₹${net.toLocaleString()}</strong></div>
             </div>
@@ -862,55 +993,110 @@ function searchEmployees() {
 
 
 /* =========================================================
-   PROFILE MANAGEMENT
+   PROFILE MANAGEMENT (LIVE API INTEGRATION)
 ========================================================= */
 
-function loadProfile() {
-    const user = getCurrentUser();
-    if (!user || !window.location.pathname.endsWith("profile.html")) return;
+async function loadProfile() {
+    if (!window.location.pathname.endsWith("profile.html")) return;
 
-    const nameElem = document.getElementById("profileName");
-    const idElem = document.getElementById("profileEmpId");
-    const emailElem = document.getElementById("profileEmail");
-    const deptElem = document.getElementById("profileDept");
-    const phoneInput = document.getElementById("profilePhone");
-    const addressInput = document.getElementById("profileAddress");
-    const avatarElem = document.querySelector(".profile-picture span");
+    let emp = null;
+    let salary = null;
 
-    if (nameElem) nameElem.textContent = user.name || "User Profile";
-    if (idElem) idElem.textContent = user.employee_code || "DF0001";
-    if (emailElem) emailElem.textContent = user.email || "";
-    if (deptElem) deptElem.textContent = user.department || (user.role === 'hr' ? "Human Resources" : "Engineering");
-    if (phoneInput) phoneInput.value = user.phone || "+91 98765 43210";
-    if (addressInput) addressInput.value = user.address || "Bengaluru, India";
+    try {
+        const res = await apiFetch('/api/employee/profile');
+        if (res && res.success && res.data) {
+            emp = res.data;
+        }
+    } catch (err) {
+        console.warn("Using offline profile fallback", err);
+    }
 
-    if (avatarElem && user.name) {
-        const initials = user.role === 'hr' ? 'HR' : user.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
-        avatarElem.textContent = initials;
+    if (!emp) {
+        const user = getCurrentUser();
+        if (user) {
+            emp = {
+                name: user.name,
+                employee_code: user.employee_code || "DF0001",
+                work_email: user.email,
+                department_name: user.department || (user.role === 'hr' ? "Human Resources" : "Engineering"),
+                phone: user.phone || "+91 98765 43210",
+                address: user.address || "Bengaluru, India",
+                job_title: user.designation || (user.role === 'hr' ? "HR Manager" : "Software Engineer"),
+                join_date: user.join_date || "2025-03-01",
+                status: "active"
+            };
+        }
+    }
+
+    if (emp) {
+        if (document.getElementById("profileName")) document.getElementById("profileName").textContent = emp.name;
+        if (document.getElementById("profileEmpId")) document.getElementById("profileEmpId").textContent = emp.employee_code;
+        if (document.getElementById("profileEmpIdText")) document.getElementById("profileEmpIdText").textContent = emp.employee_code;
+        if (document.getElementById("profileEmail")) document.getElementById("profileEmail").textContent = emp.work_email;
+        if (document.getElementById("profileDept")) document.getElementById("profileDept").textContent = emp.department_name;
+        if (document.getElementById("profilePhone")) document.getElementById("profilePhone").value = emp.phone || "";
+        if (document.getElementById("profileAddress")) document.getElementById("profileAddress").value = emp.address || "";
+
+        // Job Details
+        if (document.getElementById("jobDept")) document.getElementById("jobDept").textContent = emp.department_name || "General";
+        if (document.getElementById("jobDesignation")) document.getElementById("jobDesignation").textContent = emp.job_title || "Employee";
+        if (document.getElementById("jobJoinDate")) document.getElementById("jobJoinDate").textContent = emp.join_date || "-";
+        if (document.getElementById("jobStatus")) document.getElementById("jobStatus").textContent = (emp.status || "active").toUpperCase();
+
+        // Salary Structure Card
+        try {
+            const salRes = await apiFetch('/api/payroll/salary-info');
+            if (salRes && salRes.success && salRes.data) {
+                salary = salRes.data;
+            }
+        } catch (e) {}
+
+        const user = getCurrentUser() || {};
+        const basic = salary ? (salary.basic_salary || 0) : (user.basic_salary || 35000);
+        const allowances = salary ? ((salary.hra || 0) + (salary.special_allowance || 0)) : ((user.hra || 8000) + (user.allowances || 5000));
+        const gross = salary ? (salary.gross_salary || (basic + allowances)) : (basic + allowances);
+
+        if (document.getElementById("profileBasic")) document.getElementById("profileBasic").textContent = `₹${basic.toLocaleString()}`;
+        if (document.getElementById("profileAllowances")) document.getElementById("profileAllowances").textContent = `₹${allowances.toLocaleString()}`;
+        if (document.getElementById("profileGross")) document.getElementById("profileGross").textContent = `₹${gross.toLocaleString()}`;
+
+        // Avatar Initials
+        const avatarElem = document.querySelector(".profile-picture span");
+        if (avatarElem && emp.name) {
+            avatarElem.textContent = emp.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
+        }
     }
 }
 
-function saveProfile() {
+async function saveProfile() {
     const user = getCurrentUser();
-    if (!user) return;
-
     const phone = document.getElementById("profilePhone")?.value || "";
     const address = document.getElementById("profileAddress")?.value || "";
 
-    user.phone = phone;
-    user.address = address;
-    setCurrentUser(user);
+    if (user) {
+        user.phone = phone;
+        user.address = address;
+        setCurrentUser(user);
 
-    const users = JSON.parse(localStorage.getItem("dayflow_users") || "[]");
-    const idx = users.findIndex(u => u.email === user.email);
-    if (idx !== -1) {
-        users[idx].phone = phone;
-        users[idx].address = address;
-        localStorage.setItem("dayflow_users", JSON.stringify(users));
+        const users = JSON.parse(localStorage.getItem("dayflow_users") || "[]");
+        const idx = users.findIndex(u => u.email === user.email);
+        if (idx !== -1) {
+            users[idx].phone = phone;
+            users[idx].address = address;
+            localStorage.setItem("dayflow_users", JSON.stringify(users));
+        }
     }
 
-    apiFetch('/api/employee/profile', 'PUT', { phone, address }).catch(() => {});
-    alert("Profile changes saved successfully!");
+    const res = await apiFetch('/api/employee/profile', 'PUT', { phone, address });
+    if (res && res.success) {
+        alert("✅ Profile changes saved successfully!");
+        loadProfile();
+    } else if (res && !res.fallback && !res.success) {
+        alert("❌ Failed to save profile: " + (res.message || "Unknown error"));
+    } else {
+        alert("✅ Profile changes saved locally!");
+        loadProfile();
+    }
 }
 
 
