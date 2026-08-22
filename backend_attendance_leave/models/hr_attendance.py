@@ -89,17 +89,38 @@ class DayflowAttendance(models.Model):
             else:
                 rec.worked_hours = 0.0
 
-    @api.depends('worked_hours', 'check_in', 'check_out')
+    @api.depends('worked_hours', 'check_in', 'check_out', 'employee_id', 'date')
     def _compute_status(self):
         """
-        Compute attendance status based on worked hours:
-        - In-progress (check_in without check_out): 'present'
-        - Worked >= 8.0 hours: 'present' (full day)
-        - Worked >= 4.0 and < 8.0 hours: 'half_day'
-        - Worked > 0 and < 4.0 hours: 'half_day' (partial attendance)
-        - No check_in or 0 hours: 'absent'
+        Compute attendance status:
+        1. Check whether an approved leave covers this employee and date (Priority).
+           If yes -> 'leave'
+        2. Otherwise calculate based on worked hours:
+           - In-progress (check_in without check_out): 'present'
+           - Worked >= 8.0 hours: 'present' (full day)
+           - Worked >= 4.0 and < 8.0 hours: 'half_day'
+           - Worked > 0 and < 4.0 hours: 'half_day' (partial attendance)
+           - No check_in or 0 hours: 'absent'
         """
         for rec in self:
+            # 1. Approved leave priority check
+            if rec.employee_id and rec.date:
+                try:
+                    env = getattr(rec, 'env', None) or getattr(self, 'env', None)
+                    if env and 'dayflow.leave' in env:
+                        approved_leave = env['dayflow.leave'].sudo().search([
+                            ('employee_id', '=', rec.employee_id.id),
+                            ('state', '=', 'approved'),
+                            ('date_from', '<=', rec.date),
+                            ('date_to', '>=', rec.date),
+                        ], limit=1)
+                        if approved_leave:
+                            rec.status = 'leave'
+                            continue
+                except Exception:
+                    pass
+
+            # 2. Standard attendance calculation
             if not rec.check_in:
                 rec.status = 'absent'
             elif not rec.check_out:
