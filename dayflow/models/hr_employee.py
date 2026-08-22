@@ -34,12 +34,25 @@ class DayflowEmployee(models.Model):
     # Relational fields
     attendance_ids = fields.One2many('dayflow.attendance', 'employee_id', string='Attendance Records')
     leave_ids = fields.One2many('dayflow.leave', 'employee_id', string='Leave Requests')
-    payroll_id = fields.One2many('dayflow.payroll', 'employee_id', string='Payroll Information')
+    payroll_ids = fields.One2many('dayflow.payroll', 'employee_id', string='Payroll Information')
 
     _sql_constraints = [
         ('employee_code_unique', 'unique(employee_code)', 'The Employee ID must be unique!'),
         ('work_email_unique', 'unique(work_email)', 'The Work Email must be unique!'),
     ]
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if not vals.get('employee_code') or vals.get('employee_code') == 'DF0001':
+                seq_code = self.env['ir.sequence'].next_by_code('dayflow.employee.code')
+                if seq_code:
+                    vals['employee_code'] = seq_code
+                elif not vals.get('employee_code'):
+                    last_emp = self.search([], order='id desc', limit=1)
+                    next_id = (last_emp.id + 1) if last_emp else 1
+                    vals['employee_code'] = f"DF{next_id:04d}"
+        return super(DayflowEmployee, self).create(vals_list)
 
     def update_permitted_profile(self, vals):
         """
@@ -47,7 +60,18 @@ class DayflowEmployee(models.Model):
         HR / Admin can update all fields.
         """
         self.ensure_one()
-        is_hr = self.env.user.has_group('backend.group_dayflow_hr') or self.env.user.has_group('dayflow.group_dayflow_hr') or self.env.user.id == 1
+        if not vals:
+            return True
+
+        user = self.env.user
+        is_hr = (
+            getattr(user, '_is_admin', None) and user._is_admin() or
+            user.id == 1 or
+            user.login == 'admin' or
+            getattr(user, 'dayflow_role', None) == 'hr' or
+            user.has_group('dayflow.group_dayflow_hr') or
+            user.has_group('base.group_system')
+        )
         
         if not is_hr:
             allowed_fields = {'phone', 'address', 'image_1920'}

@@ -24,8 +24,14 @@ class DayflowPayroll(models.Model):
     )
     last_updated = fields.Datetime(string='Last Updated', default=fields.Datetime.now)
 
+    @api.constrains('basic_salary', 'hra', 'special_allowance', 'deductions')
+    def _check_salary_values(self):
+        for rec in self:
+            if (rec.basic_salary or 0.0) < 0 or (rec.hra or 0.0) < 0 or (rec.special_allowance or 0.0) < 0 or (rec.deductions or 0.0) < 0:
+                raise exceptions.ValidationError("Salary amounts and deductions cannot be negative.")
+
     @api.depends('basic_salary', 'hra', 'special_allowance', 'deductions')
     def _compute_salary(self):
         for rec in self:
-            rec.gross_salary = rec.basic_salary + rec.hra + rec.special_allowance
-            rec.net_salary = max(0.0, rec.gross_salary - rec.deductions)
+            rec.gross_salary = (rec.basic_salary or 0.0) + (rec.hra or 0.0) + (rec.special_allowance or 0.0)
+            rec.net_salary = max(0.0, rec.gross_salary - (rec.deductions or 0.0))

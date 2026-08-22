@@ -3,18 +3,14 @@ from datetime import datetime, date
 import logging
 from odoo import http, fields
 from odoo.http import request
-from .common import json_response, options_response, get_json_body
+from .common import json_response, options_response, get_json_body, is_hr_user, get_auth_context
 
 _logger = logging.getLogger(__name__)
 
 
 class DayflowLeaveController(http.Controller):
 
-    def _get_current_employee(self):
-        user = request.env.user
-        return user.dayflow_employee_id or request.env['dayflow.employee'].sudo().search([('user_id', '=', user.id)], limit=1)
-
-    @http.route('/api/leave/types', type='http', auth='user', methods=['GET', 'OPTIONS'], csrf=False, cors='*')
+    @http.route('/api/leave/types', type='http', auth='public', methods=['GET', 'OPTIONS'], csrf=False, cors='*')
     def get_leave_types(self, **kwargs):
         """Retrieve available leave types."""
         if request.httprequest.method == 'OPTIONS':
@@ -27,14 +23,17 @@ class DayflowLeaveController(http.Controller):
         ]
         return json_response(data=types)
 
-    @http.route('/api/leave/apply', type='http', auth='user', methods=['POST', 'OPTIONS'], csrf=False, cors='*')
+    @http.route('/api/leave/apply', type='http', auth='public', methods=['POST', 'OPTIONS'], csrf=False, cors='*')
     def apply_leave(self, **kwargs):
         """Submit a new leave application."""
         if request.httprequest.method == 'OPTIONS':
             return options_response()
 
-        employee = self._get_current_employee()
-        if not employee:
+        user, employee, err = get_auth_context()
+        if err:
+            return err
+
+        if not employee or not employee.exists():
             return json_response(success=False, status=404, message='Employee profile not found.')
 
         body = get_json_body()
@@ -51,14 +50,14 @@ class DayflowLeaveController(http.Controller):
             )
 
         try:
-            d_from = datetime.strptime(date_from, '%Y-%m-%d').date()
-            d_to = datetime.strptime(date_to, '%Y-%m-%d').date()
+            d_from = datetime.strptime(str(date_from).strip(), '%Y-%m-%d').date()
+            d_to = datetime.strptime(str(date_to).strip(), '%Y-%m-%d').date()
             if d_to < d_from:
                 return json_response(success=False, status=400, message='End date cannot be before start date.')
         except ValueError:
             return json_response(success=False, status=400, message='Invalid date format. Use YYYY-MM-DD.')
 
-        leave_req = request.env['dayflow.leave'].create({
+        leave_req = request.env['dayflow.leave'].sudo().create({
             'employee_id': employee.id,
             'leave_type': leave_type,
             'date_from': d_from,
@@ -80,17 +79,20 @@ class DayflowLeaveController(http.Controller):
             status=201
         )
 
-    @http.route('/api/leave/my-requests', type='http', auth='user', methods=['GET', 'OPTIONS'], csrf=False, cors='*')
+    @http.route('/api/leave/my-requests', type='http', auth='public', methods=['GET', 'OPTIONS'], csrf=False, cors='*')
     def get_my_leaves(self, **kwargs):
         """Retrieve leave requests submitted by the logged-in employee."""
         if request.httprequest.method == 'OPTIONS':
             return options_response()
 
-        employee = self._get_current_employee()
-        if not employee:
+        user, employee, err = get_auth_context()
+        if err:
+            return err
+
+        if not employee or not employee.exists():
             return json_response(success=False, status=404, message='Employee profile not found.')
 
-        requests = request.env['dayflow.leave'].search(
+        requests = request.env['dayflow.leave'].sudo().search(
             [('employee_id', '=', employee.id)],
             order='create_date desc'
         )
@@ -104,22 +106,25 @@ class DayflowLeaveController(http.Controller):
             'remarks': req.remarks,
             'state': req.state,
             'manager_remarks': req.manager_remarks or '',
-            'created_at': req.create_date.strftime('%Y-%m-%d %H:%M:%S') if req.create_date else None,
+            'created_at': req.create_date.strftime('%Y-%m-%d %H:%M:%S') if (req.create_date and hasattr(req.create_date, 'strftime')) else (str(req.create_date) if req.create_date else None),
         } for req in requests]
 
         return json_response(data=data)
 
-    @http.route('/api/leave/pending', type='http', auth='user', methods=['GET', 'OPTIONS'], csrf=False, cors='*')
+    @http.route('/api/leave/pending', type='http', auth='public', methods=['GET', 'OPTIONS'], csrf=False, cors='*')
     def get_pending_leaves(self, **kwargs):
         """HR endpoint to fetch all pending leave requests requiring approval."""
         if request.httprequest.method == 'OPTIONS':
             return options_response()
 
-        user = request.env.user
-        if not (user.has_group('backend.group_dayflow_hr') or user.has_group('dayflow.group_dayflow_hr') or user.id == 1):
+        user, _, err = get_auth_context()
+        if err:
+            return err
+
+        if not is_hr_user(user):
             return json_response(success=False, status=403, message='Access denied: HR privileges required.')
 
-        pending_requests = request.env['dayflow.leave'].search(
+        pending_requests = request.env['dayflow.leave'].sudo().search(
             [('state', '=', 'pending')],
             order='create_date asc'
         )
@@ -134,19 +139,22 @@ class DayflowLeaveController(http.Controller):
             'date_to': str(req.date_to),
             'duration_days': req.duration_days,
             'remarks': req.remarks,
-            'created_at': req.create_date.strftime('%Y-%m-%d %H:%M:%S') if req.create_date else None,
+            'created_at': req.create_date.strftime('%Y-%m-%d %H:%M:%S') if (req.create_date and hasattr(req.create_date, 'strftime')) else (str(req.create_date) if req.create_date else None),
         } for req in pending_requests]
 
         return json_response(data=data)
 
-    @http.route('/api/leave/action', type='http', auth='user', methods=['POST', 'OPTIONS'], csrf=False, cors='*')
+    @http.route('/api/leave/action', type='http', auth='public', methods=['POST', 'OPTIONS'], csrf=False, cors='*')
     def process_leave_action(self, **kwargs):
         """HR action handler to approve or reject a leave request."""
         if request.httprequest.method == 'OPTIONS':
             return options_response()
 
-        user = request.env.user
-        if not (user.has_group('backend.group_dayflow_hr') or user.has_group('dayflow.group_dayflow_hr') or user.id == 1):
+        user, _, err = get_auth_context()
+        if err:
+            return err
+
+        if not is_hr_user(user):
             return json_response(success=False, status=403, message='Access denied: HR privileges required.')
 
         body = get_json_body()
@@ -161,7 +169,12 @@ class DayflowLeaveController(http.Controller):
                 message="Invalid request. Provide 'leave_id' and 'action' ('approve' or 'reject')."
             )
 
-        leave_req = request.env['dayflow.leave'].browse(int(leave_id))
+        try:
+            leave_id_int = int(leave_id)
+        except (ValueError, TypeError):
+            return json_response(success=False, status=400, message='Invalid leave_id format.')
+
+        leave_req = request.env['dayflow.leave'].sudo().browse(leave_id_int)
         if not leave_req.exists():
             return json_response(success=False, status=404, message='Leave request not found.')
 

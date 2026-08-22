@@ -20,11 +20,17 @@ class DayflowAttendance(models.Model):
     )
     remarks = fields.Char(string='Notes')
 
+    @api.constrains('check_in', 'check_out')
+    def _check_validity_check_in_check_out(self):
+        for rec in self:
+            if rec.check_in and rec.check_out and rec.check_out < rec.check_in:
+                raise exceptions.ValidationError("Check-out time cannot be earlier than check-in time.")
+
     @api.depends('check_in', 'check_out')
     def _compute_worked_hours(self):
         for rec in self:
             if rec.check_in and rec.check_out:
                 delta = rec.check_out - rec.check_in
-                rec.worked_hours = round(delta.total_seconds() / 3600.0, 2)
+                rec.worked_hours = max(0.0, round(delta.total_seconds() / 3600.0, 2))
             else:
                 rec.worked_hours = 0.0

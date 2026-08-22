@@ -3,7 +3,7 @@ import uuid
 import logging
 from odoo import http
 from odoo.http import request
-from .common import json_response, options_response, get_json_body
+from .common import json_response, options_response, get_json_body, is_hr_user, get_auth_context
 
 _logger = logging.getLogger(__name__)
 
@@ -19,14 +19,15 @@ class DayflowAuthController(http.Controller):
         body = get_json_body()
         email = (body.get('email') or '').strip()
         password = body.get('password') or ''
+        custom_db = body.get('db')
 
         if not email or not password:
             return json_response(success=False, status=400, message='Email and password are required.')
 
-        db = request.session.db or http.db_monodb()
+        db = custom_db or request.session.db or http.db_monodb()
         if not db:
             # Fallback to current database if available
-            db = request.env.cr.dbname if hasattr(request, 'env') and request.env.cr else False
+            db = request.env.cr.dbname if hasattr(request, 'env') and request.env and request.env.cr else False
 
         try:
             # Authenticate via Odoo session
@@ -48,7 +49,7 @@ class DayflowAuthController(http.Controller):
             employee = user.dayflow_employee_id or request.env['dayflow.employee'].sudo().search([('user_id', '=', user.id)], limit=1)
             
             # Determine effective role
-            role = 'hr' if (user.has_group('backend.group_dayflow_hr') or user.has_group('dayflow.group_dayflow_hr') or user.id == 1) else 'employee'
+            role = 'hr' if is_hr_user(user) else 'employee'
 
             user_data = {
                 'user_id': user.id,
@@ -115,11 +116,11 @@ class DayflowAuthController(http.Controller):
 
             # Assign group
             if role == 'hr':
-                hr_group = env.ref('backend.group_dayflow_hr', raise_if_not_found=False) or env.ref('dayflow.group_dayflow_hr', raise_if_not_found=False)
+                hr_group = env.ref('dayflow.group_dayflow_hr', raise_if_not_found=False)
                 if hr_group:
                     hr_group.sudo().write({'users': [(4, new_user.id)]})
             else:
-                emp_group = env.ref('backend.group_dayflow_employee', raise_if_not_found=False) or env.ref('dayflow.group_dayflow_employee', raise_if_not_found=False)
+                emp_group = env.ref('dayflow.group_dayflow_employee', raise_if_not_found=False)
                 if emp_group:
                     emp_group.sudo().write({'users': [(4, new_user.id)]})
 
@@ -192,15 +193,17 @@ class DayflowAuthController(http.Controller):
         else:
             return json_response(success=False, status=400, message='Invalid or expired verification token.')
 
-    @http.route('/api/auth/me', type='http', auth='user', methods=['GET', 'OPTIONS'], csrf=False, cors='*')
+    @http.route('/api/auth/me', type='http', auth='public', methods=['GET', 'OPTIONS'], csrf=False, cors='*')
     def current_user(self, **kwargs):
         """Retrieve current logged in user session information."""
         if request.httprequest.method == 'OPTIONS':
             return options_response()
 
-        user = request.env.user
-        employee = user.dayflow_employee_id or request.env['dayflow.employee'].sudo().search([('user_id', '=', user.id)], limit=1)
-        role = 'hr' if (user.has_group('backend.group_dayflow_hr') or user.has_group('dayflow.group_dayflow_hr') or user.id == 1) else 'employee'
+        user, employee, err = get_auth_context()
+        if err:
+            return err
+
+        role = 'hr' if is_hr_user(user) else 'employee'
 
         return json_response(data={
             'user_id': user.id,

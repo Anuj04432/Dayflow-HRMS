@@ -2,7 +2,7 @@
 name = "dayflow-hrms"
 version = "0.1.0"
 description = "Add your description here"
-readme = "README.md"
+readme = "readme.md"
 authors = [
     { name = "Anuj04432", email = "anujwagmore835@gmail.com" }
 ]

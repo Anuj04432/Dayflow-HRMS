@@ -28,6 +28,14 @@ class ResUsers(models.Model):
         required=True
     )
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        users = super(ResUsers, self).create(vals_list)
+        for user in users:
+            if not user.verification_token and not user.is_verified and user.id != 1 and user.login != 'admin':
+                user.generate_verification_token()
+        return users
+
     def generate_verification_token(self):
         """Generate a unique verification token for email activation."""
         for user in self:

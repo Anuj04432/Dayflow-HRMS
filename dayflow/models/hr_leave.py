@@ -31,6 +31,12 @@ class DayflowLeave(models.Model):
     approved_by = fields.Many2one('res.users', string='Approved / Reviewed By', readonly=True)
     manager_remarks = fields.Text(string='Manager / HR Comments', tracking=True)
 
+    @api.constrains('date_from', 'date_to')
+    def _check_validity_dates(self):
+        for rec in self:
+            if rec.date_from and rec.date_to and rec.date_to < rec.date_from:
+                raise exceptions.ValidationError("Leave end date cannot be earlier than start date.")
+
     @api.depends('date_from', 'date_to')
     def _compute_duration(self):
         for rec in self:
@@ -45,19 +51,23 @@ class DayflowLeave(models.Model):
     def action_approve(self, comments=None):
         """Approve leave request (HR only)."""
         for rec in self:
-            rec.write({
+            vals = {
                 'state': 'approved',
                 'approved_by': self.env.user.id,
-                'manager_remarks': comments or rec.manager_remarks
-            })
+            }
+            if comments:
+                vals['manager_remarks'] = comments
+            rec.write(vals)
         return True
 
     def action_reject(self, comments=None):
         """Reject leave request (HR only)."""
         for rec in self:
-            rec.write({
+            vals = {
                 'state': 'rejected',
                 'approved_by': self.env.user.id,
-                'manager_remarks': comments or rec.manager_remarks
-            })
+            }
+            if comments:
+                vals['manager_remarks'] = comments
+            rec.write(vals)
         return True
