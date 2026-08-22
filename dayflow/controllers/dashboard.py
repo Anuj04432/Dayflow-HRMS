@@ -60,10 +60,11 @@ class DayflowDashboardController(http.Controller):
                 'department_name': employee.department_name,
             },
             'attendance': {
-                'today_status': 'checked_out' if (today_att and today_att.check_out) else ('checked_in' if today_att else 'not_checked_in'),
+                'today_status': 'checked_out' if (today_att and today_att.check_out) else ('checked_in' if (today_att and today_att.state != 'leave') else ('on_leave' if (today_att and today_att.state == 'leave') else 'not_checked_in')),
                 'check_in': check_in_str,
                 'check_out': check_out_str,
                 'worked_hours': today_att.worked_hours if today_att else 0.0,
+                'state': today_att.state if today_att else 'absent',
             },
             'leaves': {
                 'pending_count': pending_leaves,
@@ -101,11 +102,11 @@ class DayflowDashboardController(http.Controller):
         today = fields.Date.today()
         total_employees = request.env['dayflow.employee'].sudo().search_count([('status', '=', 'active')])
 
-        # Attendance counts for today (distinct employees present)
+        # Attendance counts for today
         today_attendances = request.env['dayflow.attendance'].sudo().search([('date', '=', today)])
-        present_employees = today_attendances.filtered(lambda a: a.state in ('present', 'half_day')).mapped('employee_id')
-        present_count = len(present_employees)
-        absent_count = max(0, total_employees - present_count)
+        present_count = len(today_attendances.filtered(lambda a: a.state in ('present', 'half_day')))
+        leave_count = len(today_attendances.filtered(lambda a: a.state == 'leave'))
+        absent_count = max(0, total_employees - present_count - leave_count)
 
         # Pending approvals
         pending_leaves_count = request.env['dayflow.leave'].sudo().search_count([('state', '=', 'pending')])
@@ -123,6 +124,7 @@ class DayflowDashboardController(http.Controller):
             'metrics': {
                 'total_employees': total_employees,
                 'present_today': present_count,
+                'on_leave_today': leave_count,
                 'absent_today': absent_count,
                 'pending_leave_approvals': pending_leaves_count,
                 'total_monthly_payroll': total_payroll_expenditure,

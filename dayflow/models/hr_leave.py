@@ -49,15 +49,31 @@ class DayflowLeave(models.Model):
                 rec.duration_days = 0.0
 
     def action_approve(self, comments=None):
-        """Approve leave request (HR only)."""
+        """Approve leave request (HR only) and sync with daily attendance."""
+        today = fields.Date.today()
         for rec in self:
             vals = {
                 'state': 'approved',
                 'approved_by': self.env.user.id,
+                'manager_remarks': comments or rec.manager_remarks
             }
-            if comments:
-                vals['manager_remarks'] = comments
             rec.write(vals)
+            # If leave covers today, ensure attendance state reflects 'leave'
+            if rec.date_from <= today <= rec.date_to:
+                att = self.env['dayflow.attendance'].search([
+                    ('employee_id', '=', rec.employee_id.id),
+                    ('date', '=', today)
+                ], limit=1)
+                if att:
+                    att.write({'state': 'leave', 'remarks': f"On Approved {rec.leave_type.capitalize()} Leave"})
+                else:
+                    self.env['dayflow.attendance'].create({
+                        'employee_id': rec.employee_id.id,
+                        'date': today,
+                        'check_in': fields.Datetime.now(),
+                        'state': 'leave',
+                        'remarks': f"On Approved {rec.leave_type.capitalize()} Leave"
+                    })
         return True
 
     def action_reject(self, comments=None):

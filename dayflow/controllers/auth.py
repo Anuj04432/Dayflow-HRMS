@@ -202,7 +202,6 @@ class DayflowAuthController(http.Controller):
         user, employee, err = get_auth_context()
         if err:
             return err
-
         role = 'hr' if is_hr_user(user) else 'employee'
 
         return json_response(data={

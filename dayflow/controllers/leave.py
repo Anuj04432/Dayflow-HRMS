@@ -144,6 +144,39 @@ class DayflowLeaveController(http.Controller):
 
         return json_response(data=data)
 
+    @http.route('/api/leave/all-history', type='http', auth='public', methods=['GET', 'OPTIONS'], csrf=False, cors='*')
+    def get_all_leave_history(self, **kwargs):
+        """HR endpoint to fetch all historical leave logs company-wide."""
+        if request.httprequest.method == 'OPTIONS':
+            return options_response()
+
+        user, _, err = get_auth_context()
+        if err:
+            return err
+
+        if not is_hr_user(user):
+            return json_response(success=False, status=403, message='Access denied: HR privileges required.')
+
+        all_leaves = request.env['dayflow.leave'].sudo().search([], order='create_date desc')
+
+        data = [{
+            'id': req.id,
+            'employee_id': req.employee_id.id,
+            'employee_name': req.employee_id.name,
+            'employee_code': req.employee_id.employee_code,
+            'department_name': req.employee_id.department_name,
+            'leave_type': req.leave_type,
+            'date_from': str(req.date_from),
+            'date_to': str(req.date_to),
+            'duration_days': req.duration_days,
+            'remarks': req.remarks,
+            'state': req.state,
+            'manager_remarks': req.manager_remarks or '',
+            'created_at': req.create_date.strftime('%Y-%m-%d %H:%M:%S') if (req.create_date and hasattr(req.create_date, 'strftime')) else (str(req.create_date) if req.create_date else None),
+        } for req in all_leaves]
+
+        return json_response(data=data)
+
     @http.route('/api/leave/action', type='http', auth='public', methods=['POST', 'OPTIONS'], csrf=False, cors='*')
     def process_leave_action(self, **kwargs):
         """HR action handler to approve or reject a leave request."""
@@ -167,6 +200,13 @@ class DayflowLeaveController(http.Controller):
                 success=False,
                 status=400,
                 message="Invalid request. Provide 'leave_id' and 'action' ('approve' or 'reject')."
+            )
+
+        if action == 'reject' and not comments:
+            return json_response(
+                success=False,
+                status=400,
+                message="HR comments are required when rejecting a leave request."
             )
 
         try:

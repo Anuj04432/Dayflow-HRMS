@@ -121,3 +121,39 @@ class DayflowPayrollController(http.Controller):
             },
             message=f"Salary structure updated successfully for {payroll.employee_id.name}."
         )
+
+    @http.route('/api/payroll/company', type='http', auth='public', methods=['GET', 'OPTIONS'], csrf=False, cors='*')
+    def get_company_payroll(self, **kwargs):
+        """HR endpoint to retrieve all company payroll records."""
+        if request.httprequest.method == 'OPTIONS':
+            return options_response()
+
+        user, _, err = get_auth_context()
+        if err:
+            return err
+
+        if not is_hr_user(user):
+            return json_response(success=False, status=403, message='Access denied: HR privileges required.')
+
+        payrolls = request.env['dayflow.payroll'].sudo().search([])
+        result = []
+        for p in payrolls:
+            last_updated_str = p.last_updated.strftime('%Y-%m-%d %H:%M:%S') if (p.last_updated and hasattr(p.last_updated, 'strftime')) else (str(p.last_updated) if p.last_updated else None)
+            result.append({
+                'id': p.id,
+                'employee_id': p.employee_id.id,
+                'employee_name': p.employee_id.name,
+                'employee_code': p.employee_id.employee_code,
+                'department_name': p.employee_id.department_name,
+                'job_title': p.employee_id.job_title,
+                'basic_salary': p.basic_salary,
+                'hra': p.hra,
+                'special_allowance': p.special_allowance,
+                'deductions': p.deductions,
+                'gross_salary': p.gross_salary,
+                'net_salary': p.net_salary,
+                'payment_frequency': p.payment_frequency,
+                'last_updated': last_updated_str,
+            })
+
+        return json_response(data=result)
