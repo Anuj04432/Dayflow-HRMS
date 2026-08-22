@@ -1198,26 +1198,90 @@ tbody tr:hover {
     }
 
     .dashboard-content {
-        padding: 20px 16px;
+        padding: 20px 14px;
     }
 
     .topbar {
-        padding: 15px 18px;
+        padding: 14px 16px;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .topbar h2 {
+        font-size: 18px;
     }
 
     .stats-grid,
     .salary-summary,
-    .form-row {
-        grid-template-columns: 1fr;
-    }
-
+    .form-row,
     .detail-grid {
         grid-template-columns: 1fr;
     }
 
     .attendance-actions {
         flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .section-header {
+        flex-direction: column;
         align-items: flex-start;
-        gap: 15px;
+        gap: 10px;
+    }
+
+    .section-header .secondary-btn,
+    .section-header .primary-btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    .table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0 -14px;
+        padding: 0 14px;
+    }
+
+    .modal-content {
+        width: 95% !important;
+        max-height: 90vh !important;
+        overflow-y: auto !important;
+        padding: 20px 16px !important;
+        margin: 15px auto !important;
+    }
+
+    .profile-banner-card {
+        flex-direction: column;
+        text-align: center;
+        align-items: center;
+        gap: 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .auth-container {
+        border-radius: 16px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    }
+
+    .auth-right {
+        padding: 30px 20px;
+    }
+
+    .auth-form h2 {
+        font-size: 22px;
+    }
+
+    .topbar p {
+        display: none;
+    }
+
+    .stat-card {
+        padding: 18px 16px;
+    }
+
+    .section-card {
+        padding: 18px 16px;
     }
 }
