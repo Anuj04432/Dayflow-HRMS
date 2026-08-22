@@ -19,7 +19,7 @@
         </div>
 
         <nav>
-            <a href="employee-dashboard.html">
+            <a id="navDashboard" href="employee-dashboard.html">
                 <span class="nav-icon">📊</span>
                 <span>Dashboard</span>
             </a>
@@ -69,7 +69,7 @@
 
             <div>
                 <h2>Payroll & Compensation</h2>
-                <p>View your transparent salary structure and generate payslips.</p>
+                <p>Transparent salary structure, payslips, and company payroll oversight.</p>
             </div>
 
             <div class="user-box">
@@ -82,90 +82,166 @@
 
         <section class="dashboard-content">
 
-            <div class="salary-summary">
+            <!-- ================= EMPLOYEE PAYROLL SECTION ================= -->
+            <div id="employeePayrollSection">
 
-                <div class="salary-card">
-                    <span>Basic Salary</span>
-                    <h2 id="payrollBasic">₹35,000</h2>
+                <div class="salary-summary">
+
+                    <div class="salary-card">
+                        <span>Basic Salary</span>
+                        <h2 id="payrollBasic">₹35,000</h2>
+                    </div>
+
+                    <div class="salary-card">
+                        <span>Allowances & HRA</span>
+                        <h2 id="payrollAllowances">₹13,000</h2>
+                    </div>
+
+                    <div class="salary-card">
+                        <span>Tax & Deductions</span>
+                        <h2 id="payrollDeductions">₹2,000</h2>
+                    </div>
+
+                    <div class="salary-card">
+                        <span>Net Take-Home</span>
+                        <h2 id="payrollNet" style="color: #4f46e5;">₹46,000</h2>
+                    </div>
+
                 </div>
 
-                <div class="salary-card">
-                    <span>Allowances & HRA</span>
-                    <h2 id="payrollAllowances">₹13,000</h2>
-                </div>
 
-                <div class="salary-card">
-                    <span>Tax & Deductions</span>
-                    <h2 id="payrollDeductions">₹2,000</h2>
-                </div>
+                <div class="section-card">
 
-                <div class="salary-card">
-                    <span>Net Take-Home</span>
-                    <h2 id="payrollNet" style="color: #4f46e5;">₹46,000</h2>
+                    <div class="section-header">
+
+                        <h3>My Salary Breakdown (Monthly)</h3>
+
+                        <button type="button" class="secondary-btn" onclick="downloadSalarySlip()">
+                            📄 Download Salary Slip
+                        </button>
+
+                    </div>
+
+
+                    <div class="table-container">
+
+                        <table>
+
+                            <thead>
+                                <tr>
+                                    <th>Compensation Component</th>
+                                    <th>Amount (INR)</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+
+                                <tr>
+                                    <td>Basic Salary</td>
+                                    <td>₹35,000</td>
+                                </tr>
+
+                                <tr>
+                                    <td>House Rent Allowance (HRA)</td>
+                                    <td>₹8,000</td>
+                                </tr>
+
+                                <tr>
+                                    <td>Special & Medical Allowances</td>
+                                    <td>₹5,000</td>
+                                </tr>
+
+                                <tr style="color: #dc2626;">
+                                    <td>Statutory Deductions (PF / TDS)</td>
+                                    <td>-₹2,000</td>
+                                </tr>
+
+                                <tr style="background: #f8fafc; font-size: 15px;">
+                                    <td>
+                                        <strong>Net Disbursed Salary</strong>
+                                    </td>
+
+                                    <td>
+                                        <strong style="color: #4f46e5;">₹46,000</strong>
+                                    </td>
+                                </tr>
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
                 </div>
 
             </div>
 
 
-            <div class="section-card">
+            <!-- ================= HR COMPANY PAYROLL SECTION ================= -->
+            <div id="hrPayrollSection" class="hidden">
 
-                <div class="section-header">
+                <div class="stats-grid">
 
-                    <h3>Salary Breakdown (Monthly)</h3>
+                    <div class="stat-card">
+                        <div class="stat-icon">💰</div>
+                        <h3>Monthly Payroll</h3>
+                        <h2 style="color: #4f46e5;">₹12.5L</h2>
+                        <p>Total company expenditure</p>
+                    </div>
 
-                    <button type="button" class="secondary-btn" onclick="downloadSalarySlip()">
-                        📄 Download Salary Slip
-                    </button>
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <h3>Salaried Employees</h3>
+                        <h2>124</h2>
+                        <p>Active pay cycle</p>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">📉</div>
+                        <h3>Total Deductions</h3>
+                        <h2 style="color: #dc2626;">₹1.8L</h2>
+                        <p>TDS, PF, & Insurance</p>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">🏦</div>
+                        <h3>Disbursement Status</h3>
+                        <h2 style="color: #16a34a;">Ready</h2>
+                        <p>August 2026 cycle</p>
+                    </div>
 
                 </div>
 
 
-                <div class="table-container">
+                <div class="section-card">
 
-                    <table>
+                    <div class="section-header">
+                        <h3>Company Salary Structure Directory</h3>
+                    </div>
 
-                        <thead>
-                            <tr>
-                                <th>Compensation Component</th>
-                                <th>Amount (INR)</th>
-                            </tr>
-                        </thead>
+                    <div class="table-container">
 
-                        <tbody>
+                        <table id="hrPayrollTable">
 
-                            <tr>
-                                <td>Basic Salary</td>
-                                <td>₹35,000</td>
-                            </tr>
+                            <thead>
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Department</th>
+                                    <th>Basic</th>
+                                    <th>Allowances</th>
+                                    <th>Deductions</th>
+                                    <th>Net Salary</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
 
-                            <tr>
-                                <td>House Rent Allowance (HRA)</td>
-                                <td>₹8,000</td>
-                            </tr>
+                            <tbody>
+                                <!-- Dynamically populated by script.js -->
+                            </tbody>
 
-                            <tr>
-                                <td>Special & Medical Allowances</td>
-                                <td>₹5,000</td>
-                            </tr>
+                        </table>
 
-                            <tr style="color: #dc2626;">
-                                <td>Statutory Deductions (PF / TDS)</td>
-                                <td>-₹2,000</td>
-                            </tr>
-
-                            <tr style="background: #f8fafc; font-size: 15px;">
-                                <td>
-                                    <strong>Net Disbursed Salary</strong>
-                                </td>
-
-                                <td>
-                                    <strong style="color: #4f46e5;">₹46,000</strong>
-                                </td>
-                            </tr>
-
-                        </tbody>
-
-                    </table>
+                    </div>
 
                 </div>
 
