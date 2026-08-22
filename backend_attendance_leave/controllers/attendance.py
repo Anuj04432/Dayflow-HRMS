@@ -31,6 +31,28 @@ class DayflowAttendanceController(http.Controller):
         ], order='id desc', limit=1)
 
         if not attendance:
+            # Check for approved leave covering today
+            approved_leave = request.env['dayflow.leave'].sudo().search([
+                ('employee_id', '=', employee.id),
+                ('state', '=', 'approved'),
+                ('date_from', '<=', today),
+                ('date_to', '>=', today),
+            ], limit=1)
+
+            if approved_leave:
+                return json_response(data={
+                    'id': None,
+                    'employee_id': employee.id,
+                    'employee_name': employee.name,
+                    'status': 'leave',
+                    'state': 'leave',
+                    'is_checked_in': False,
+                    'check_in': None,
+                    'check_out': None,
+                    'worked_hours': 0.0,
+                    'date': str(today),
+                })
+
             return json_response(data={
                 'id': None,
                 'employee_id': employee.id,
